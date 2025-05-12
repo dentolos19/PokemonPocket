@@ -1,4 +1,6 @@
-﻿namespace PokemonPocket;
+﻿using Spectre.Console;
+
+namespace PokemonPocket;
 
 internal static class Program
 {
@@ -8,6 +10,7 @@ internal static class Program
     {
         while (true)
         {
+            AnsiConsole.Clear();
             Menus.MainMenu();
         }
     }

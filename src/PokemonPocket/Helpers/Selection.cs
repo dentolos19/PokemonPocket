@@ -1,0 +1,7 @@
+﻿namespace PokemonPocket.Helpers;
+
+public class Selection(string label)
+{
+    public string Label => label;
+    public override string ToString() => Label;
+}

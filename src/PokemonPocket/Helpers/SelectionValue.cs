@@ -1,12 +1,6 @@
 ﻿namespace PokemonPocket.Helpers;
 
-public class SelectionValue<T>(string name, T value) : ISelection
+public class SelectionValue<T>(string label, T? value) : Selection(label)
 {
-    public string Name => name;
-    public T Value => value;
-
-    public override string ToString()
-    {
-        return Name;
-    }
+    public T? Value => value;
 }

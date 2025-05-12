@@ -1,12 +1,6 @@
 ﻿namespace PokemonPocket.Helpers;
 
-public class SelectionAction(string name, Action callback) : ISelection
+public class SelectionAction(string label, Action callback) : Selection(label)
 {
-    public string Name => name;
     public Action Callback => callback;
-
-    public override string ToString()
-    {
-        return Name;
-    }
 }

@@ -4,11 +4,11 @@ using Spectre.Console;
 
 namespace PokemonPocket;
 
-internal sealed class Menus
+internal static class Menus
 {
     public static void MainMenu()
     {
-        var prompt = new SelectionPrompt<SelectionAction>()
+        var prompt = new SelectionPrompt<Selection>()
             .Title("Pokemon Pocket")
             .AddChoices(
                 "Add A Pokemon".WithAction(AddPokemon_SelectEntity),
@@ -17,7 +17,7 @@ internal sealed class Menus
                 "Exit Pocket".WithAction(() => Environment.Exit(0))
             );
 
-        var result = AnsiConsole.Prompt(prompt);
+        var result = AnsiConsole.Prompt(prompt).ToAction();
         result.Callback.Invoke();
     }
 
@@ -26,13 +26,13 @@ internal sealed class Menus
         var selections = Program.Service.Entities
             .Select(entity => entity.Name.WithAction(() => AddPokemon_SetDetails(entity)));
 
-        var prompt = new SelectionPrompt<SelectionAction>()
+        var prompt = new SelectionPrompt<Selection>()
             .Title("Pokemon Pocket")
-            .AddChoiceGroup("Available Pokemons".WithEmptyAction(), selections)
+            .AddChoiceGroup("Available Pokemons".AsLabel(), selections)
             .AddChoices("Back".WithEmptyAction())
             .EnableSearch();
 
-        var result = AnsiConsole.Prompt(prompt);
+        var result = AnsiConsole.Prompt(prompt).ToAction();
         result.Callback.Invoke();
     }
 
@@ -89,6 +89,7 @@ internal sealed class Menus
         foreach (var pokemon in pets)
         {
             var entity = pokemon.GetEntity();
+            if (entity is null) continue;
 
             var entityName = entity.Name;
             var petName = string.IsNullOrEmpty(pokemon.Name) ? string.Empty : pokemon.Name;
@@ -101,9 +102,9 @@ internal sealed class Menus
         AnsiConsole.Write(table);
         AnsiConsole.WriteLine();
 
-        var prompt = new SelectionPrompt<SelectionAction>()
+        var prompt = new SelectionPrompt<Selection>()
             .AddChoiceGroup(
-                "Actions".WithEmptyAction(),
+                "Actions".AsLabel(),
                 "Rename".WithAction(() => ViewPokemons_Select(ViewPokemons_Rename)),
                 "Heal".WithEmptyAction(),
                 "Release".WithEmptyAction()
@@ -111,7 +112,7 @@ internal sealed class Menus
                 "Back".WithEmptyAction()
             );
 
-        var result = AnsiConsole.Prompt(prompt);
+        var result = AnsiConsole.Prompt(prompt).ToAction();
         result.Callback.Invoke();
     }
 
@@ -122,7 +123,7 @@ internal sealed class Menus
         var pets = Program.Service.GetAllPets();
         var petGroups = pets.ToLookup(pet => pet.EntityId, pet => pet);
 
-        var prompt = new SelectionPrompt<SelectionAction>()
+        var prompt = new SelectionPrompt<Selection>()
             .PageSize(100)
             .EnableSearch();
 
@@ -143,12 +144,12 @@ internal sealed class Menus
                     .WithAction(() => callback(pokemon));
             });
 
-            prompt.AddChoiceGroup(groupName.WithEmptyAction(), choices);
+            prompt.AddChoiceGroup(groupName.AsLabel(), choices);
         }
 
         prompt.AddChoices("Back".WithEmptyAction());
 
-        var result = AnsiConsole.Prompt(prompt);
+        var result = AnsiConsole.Prompt(prompt).ToAction();
         result.Callback.Invoke();
     }
 
@@ -162,20 +163,14 @@ internal sealed class Menus
         AnsiConsole.MarkupLineInterpolated($"You are about to rename [bold yellow]{name}[/]!");
         AnsiConsole.WriteLine();
 
-        var namePrompt = new TextPrompt<string>("Enter Pokemon's Name: ").AllowEmpty();
+        var namePrompt = new TextPrompt<string>("Enter Pokemon's New Name: ").AllowEmpty();
         var nameValue = AnsiConsole.Prompt(namePrompt);
-
-        if (string.IsNullOrEmpty(nameValue))
-        {
-            AnsiConsole.MarkupLineInterpolated($"[red]Pokemon's name cannot be empty![/]");
-            return;
-        }
 
         AnsiConsole.Status().Start("Renaming Pokemon...", context =>
         {
             Thread.Sleep(2000);
 
-            context.Status($"Renaming {name}...");
+            context.Status($"Renaming {name} to {nameValue}...");
             Thread.Sleep(5000);
 
             context.Status("Pokemon renamed successfully!");
@@ -190,13 +185,13 @@ internal sealed class Menus
     {
         var pets = Program.Service.GetAllPets();
         var petGroups = pets.ToLookup(pet => pet.EntityId, pet => pet);
-        var evolvableGroups = new List<PokemonEntity>();
+        var evolvableEntities = new List<PokemonEntity>();
 
         var table = new Table();
 
         table.AddColumn("Name");
         table.AddColumn("Amount");
-        table.AddColumn("Evolution Amount");
+        table.AddColumn("Required Amount");
         table.AddColumn("Next Evolution");
         table.AddColumn("Evolvable?");
 
@@ -205,10 +200,9 @@ internal sealed class Menus
             var entity = Program.Service.GetEntity(group.Key);
             if (entity is null) continue;
 
-            // Set default values
             var name = entity.Name;
             var amount = group.Count();
-            var evolutionAmount = "N/A";
+            var requiredAmount = "N/A";
             var nextEvolution = "None";
             var evolvable = "No";
 
@@ -219,31 +213,31 @@ internal sealed class Menus
                 var nextEvolutionEntity = Program.Service.GetEntity(entity.NextEvolutionType);
 
                 // Update values
-                evolutionAmount = entity.MinimumEvolutionAmount.ToString();
+                requiredAmount = entity.MinimumEvolutionAmount.ToString();
                 nextEvolution = nextEvolutionEntity.Name;
 
                 // Check if current entity is evolvable
                 if (amount >= entity.MinimumEvolutionAmount)
                 {
                     evolvable = "Yes";
-                    evolvableGroups.Add(entity);
+                    evolvableEntities.Add(entity);
                 }
             }
 
-            table.AddRow(name, amount.ToString(), evolutionAmount, nextEvolution, evolvable);
+            table.AddRow(name, amount.ToString(), requiredAmount, nextEvolution, evolvable);
         }
 
         AnsiConsole.Write(table);
         AnsiConsole.WriteLine();
 
-        var choices = evolvableGroups
+        var choices = evolvableEntities
             .Select(entity => entity.Name.WithAction(() => EvolvePokemon_Select(entity)));
 
-        var prompt = new SelectionPrompt<SelectionAction>()
-            .AddChoiceGroup("Eligible Pokemons".WithEmptyAction(), choices)
+        var prompt = new SelectionPrompt<Selection>()
+            .AddChoiceGroup("Eligible Pokemons".AsLabel(), choices)
             .AddChoices("Back".WithEmptyAction());
 
-        var result = AnsiConsole.Prompt(prompt);
+        var result = AnsiConsole.Prompt(prompt).ToAction();
         result.Callback.Invoke();
     }
 
@@ -263,18 +257,21 @@ internal sealed class Menus
             return $"{name} (Health: {health}, Experience: {experience})".WithValue(pokemon.Id);
         });
 
-        var prompt = new MultiSelectionPrompt<SelectionValue<Guid>>()
+        var prompt = new MultiSelectionPrompt<Selection>()
             .Title("Pokemon Evolution")
             .AddChoices(choices)
             .InstructionsText($"Please select exactly {entity.MinimumEvolutionAmount} pokemon(s) from your pocket.");
 
         while (true)
         {
-            var selections = AnsiConsole.Prompt(prompt);
-            if (selections.Count != entity.MinimumEvolutionAmount)
+            var ids = AnsiConsole.Prompt(prompt).ToValues<Guid>();
+
+            // Continue to prompt if the number of selections is not equal to the required amount
+            if (ids.Count != entity.MinimumEvolutionAmount)
                 continue;
 
-            evolutionSacrifices = selections.Select(selection => Program.Service.GetPet(selection.Value)).ToList();
+            evolutionSacrifices = ids.Select(id => Program.Service.GetPet(id)).ToList();
+
             break;
         }
 
