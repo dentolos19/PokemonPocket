@@ -15,4 +15,9 @@ public class PokemonPet
     {
         return Program.Service.GetEntity(EntityId);
     }
+
+    public string GetName()
+    {
+        return string.IsNullOrEmpty(Name) ? GetEntity()?.Name ?? "Unknown" : Name;
+    }
 }

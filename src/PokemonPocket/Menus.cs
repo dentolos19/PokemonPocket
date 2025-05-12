@@ -6,11 +6,14 @@ namespace PokemonPocket;
 
 internal static class Menus
 {
+    #region Common Menus
+
     public static void MainMenu()
     {
         var prompt = new SelectionPrompt<Selection>()
             .Title("Pokemon Pocket")
             .AddChoices(
+                "Catch A Pokemon".WithAction(CatchPokemon_Wild),
                 "Add A Pokemon".WithAction(AddPokemon_SelectEntity),
                 "View My Pokemons".WithAction(ViewPokemons_List),
                 "Evolve My Pokemons".WithAction(EvolvePokemon_List),
@@ -20,6 +23,165 @@ internal static class Menus
         var result = AnsiConsole.Prompt(prompt).ToAction();
         result.Callback.Invoke();
     }
+
+    #endregion
+
+    #region Catch Pokemons
+
+    public static void CatchPokemon_Wild()
+    {
+        var entity = Program.Service.Entities[Random.Shared.Next(0, Program.Service.Entities.Count)];
+
+        AnsiConsole.MarkupLineInterpolated($"A wild [bold yellow]{entity.Name}[/] appeared!");
+        AnsiConsole.WriteLine();
+
+        var prompt = new SelectionPrompt<Selection>()
+            .AddChoices(
+                "Catch".WithAction(() => CatchPokemon_Draft(entity)),
+                "Run Away".WithAction(CatchPokemon_Wild),
+                "Tactical Retreat".WithEmptyAction()
+            );
+
+        var result = AnsiConsole.Prompt(prompt).ToAction();
+        result.Callback.Invoke();
+    }
+
+    public static void CatchPokemon_Draft(PokemonEntity wildEntity)
+    {
+        var pets = Program.Service.GetAllPets();
+        var groups = pets.ToLookup(pet => pet.EntityId, pet => pet);
+
+        var prompt = new SelectionPrompt<Selection>()
+            .Title("Choose Your Pokemon!")
+            .PageSize(100)
+            .EnableSearch();
+
+        foreach (var group in groups)
+        {
+            var entity = Program.Service.GetEntity(group.Key);
+            if (entity is null) continue;
+
+            var choices = group.Where(pet => pet.Health > 0).Select(pet =>
+            {
+                var name = pet.GetName();
+                var health = pet.Health;
+                var experience = pet.Experience;
+
+                return $"{name} (Health: {health}, Experience: {experience})"
+                    .WithAction(() => CatchPokemon_Battle(wildEntity, pet));
+            });
+
+            prompt.AddChoiceGroup(entity.Name.AsLabel(), choices);
+        }
+
+        prompt.AddChoices("Back".WithEmptyAction());
+
+        var result = AnsiConsole.Prompt(prompt).ToAction();
+        result.Callback.Invoke();
+    }
+
+    public static void CatchPokemon_Battle(PokemonEntity wildEntity, PokemonPet pet)
+    {
+        var wild = wildEntity.SpawnPet();
+        var petEntity = pet.GetEntity();
+
+        var wildName = wild.GetName();
+        var petName = pet.GetName();
+
+        var wildHealth = wild.Health;
+        var petHealth = pet.Health;
+
+        var wildDamage = 0;
+        var petDamage = 0;
+
+        while (true)
+        {
+            AnsiConsole.Clear();
+
+            var wildHealthBar = new BarChartItem(wildEntity.Name, wildHealth, Color.Red);
+            var petHealthBar = new BarChartItem(pet.GetName(), petHealth, Color.Green);
+
+            var chart = new BarChart()
+                .Width(50)
+                .AddItem(wildHealthBar)
+                .AddItem(petHealthBar);
+
+            AnsiConsole.WriteLine("Battle!");
+            AnsiConsole.WriteLine();
+            AnsiConsole.Write(chart);
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLineInterpolated($"[bold red]{wildName}[/] HP: {wildHealth}");
+            AnsiConsole.MarkupLineInterpolated($"[bold green]{petName}[/] HP: {petHealth}");
+            AnsiConsole.WriteLine();
+
+            if (petHealth <= 0)
+            {
+                AnsiConsole.MarkupLineInterpolated($"[bold green]{petName}[/] has fainted!");
+                AnsiConsole.WriteLine();
+
+                pet.Health = 0;
+                // pet.Experience += wildEntity.Experience;
+                Program.Service.SaveDatabase();
+
+                Console.ReadKey();
+                break;
+            }
+
+            if (wildHealth <= 0)
+            {
+                AnsiConsole.MarkupLineInterpolated($"You have caught [bold red]{wildName}[/]!");
+                AnsiConsole.WriteLine();
+
+                var newPet = new PokemonPet
+                {
+                    EntityId = wildEntity.Id,
+                    Health = 100,
+                    Experience = 0
+                };
+
+                pet.Health = petHealth;
+                // pet.Experience += wildEntity.Experience;
+                Program.Service.SaveDatabase();
+                Program.Service.AddPet(newPet);
+
+                Console.ReadKey();
+                break;
+            }
+
+            var prompt = new SelectionPrompt<Selection>()
+                .AddChoices(
+                    "Attack".WithAction(() =>
+                    {
+                        petDamage = petEntity.DealDamage();
+                        wildDamage = wildEntity.DealDamage();
+                    }),
+                    "Defend".WithAction(() =>
+                    {
+                        petDamage = 0;
+                        wildDamage = wildEntity.DealDamage() / 50;
+                    })
+                );
+
+            var result = AnsiConsole.Prompt(prompt).ToAction();
+            result.Callback.Invoke();
+
+            AnsiConsole.MarkupLineInterpolated(
+                $"You have dealt [bold green]{petDamage}[/] damage to [bold red]{wildEntity.Name}[/]!"
+            );
+
+            Thread.Sleep(2000);
+            wildHealth -= petDamage;
+
+            AnsiConsole.MarkupLineInterpolated(
+                $"[bold red]{wildEntity.Name}[/] has dealt [bold green]{wildDamage}[/] damage to [bold green]{pet.GetName()}[/]!"
+            );
+
+            Thread.Sleep(2000);
+            petHealth -= wildDamage;
+        }
+    }
+
+    #endregion
 
     public static void AddPokemon_SelectEntity()
     {
@@ -106,8 +268,8 @@ internal static class Menus
             .AddChoiceGroup(
                 "Actions".AsLabel(),
                 "Rename".WithAction(() => ViewPokemons_Select(ViewPokemons_Rename)),
-                "Heal".WithEmptyAction(),
-                "Release".WithEmptyAction()
+                "Heal".WithAction(() => ViewPokemons_Select(ViewPokemons_Heal)),
+                "Release".WithAction(() => ViewPokemons_Select(ViewPokemons_Release))
             ).AddChoices(
                 "Back".WithEmptyAction()
             );
@@ -179,6 +341,39 @@ internal static class Menus
 
         pet.Name = nameValue;
         Program.Service.SaveDatabase();
+    }
+
+    public static void ViewPokemons_Heal(PokemonPet pet)
+    {
+        AnsiConsole.Status().Start("Healing Pokemon...", context =>
+        {
+            Thread.Sleep(2000);
+
+            context.Status($"Healing {pet.Name}...");
+            Thread.Sleep(5000);
+
+            context.Status("Pokemon healed successfully!");
+            Thread.Sleep(2000);
+        });
+
+        pet.Health = 100;
+        Program.Service.SaveDatabase();
+    }
+
+    public static void ViewPokemons_Release(PokemonPet pet)
+    {
+        AnsiConsole.Status().Start("Releasing Pokemon...", context =>
+        {
+            Thread.Sleep(2000);
+
+            context.Status($"Releasing {pet.Name}...");
+            Thread.Sleep(5000);
+
+            context.Status("Pokemon released successfully!");
+            Thread.Sleep(2000);
+        });
+
+        Program.Service.DeletePet(pet.Id);
     }
 
     public static void EvolvePokemon_List()
