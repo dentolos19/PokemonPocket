@@ -2,10 +2,16 @@
 
 namespace PokemonPocket.Entities;
 
-public class Charmeleon() : PokemonEntity("27170FFD-CA65-4B7B-A814-28C5F4509F94")
+public class Charmeleon : Pokemon
 {
+    // Properties
     public override string Name => nameof(Charmeleon);
+    public override int Health => 100;
 
-    public override string SkillName => "Flame Burst";
+    // Properties
+    public override int DamageMultiplier => 3;
+
+    // Skill
+    public override string SkillName => "Thunderbolt";
     public override int SkillDamage => 30;
 }

@@ -3,16 +3,19 @@ using PokemonPocket.Models;
 
 namespace PokemonPocket;
 
-public class PokemonDatabase : DbContext
+public class ProgramDatabase : DbContext
 {
-    private static string _databasePath;
+    private readonly string _databasePath;
 
-    public DbSet<PokemonPet> Pokemon { get; set; }
+    public DbSet<Pokemon> OwnedPokemons { get; set; }
 
-    public PokemonDatabase()
+
+    public ProgramDatabase()
     {
+        // Configure Database Path
         var directoryPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        var databasePath = Path.Join(directoryPath, "pokemon.db");
+        var databasePath = Path.Join(directoryPath, "pocket.db");
+
         _databasePath = databasePath;
     }
 
