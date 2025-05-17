@@ -6,9 +6,7 @@ public class Raichu : Pokemon
 {
     // Properties
     public override string Name => nameof(Raichu);
-    public override int Health => 100;
-
-    // Properties
+    public override int MaxHealth => 100;
     public override int DamageMultiplier => 3;
 
     // Skill

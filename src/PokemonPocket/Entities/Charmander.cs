@@ -6,7 +6,7 @@ public class Charmander : Pokemon
 {
     // Properties
     public override string Name => nameof(Charmander);
-    public override int Health => 100;
+    public override int MaxHealth => 100;
 
     // Properties
     public override int DamageMultiplier => 1;

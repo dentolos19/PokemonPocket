@@ -7,13 +7,13 @@ public class ProgramDatabase : DbContext
 {
     private readonly string _databasePath;
 
-    public DbSet<Pokemon> OwnedPokemons { get; set; }
+    public DbSet<Pokemon> Pets { get; set; }
 
 
     public ProgramDatabase()
     {
         // Configure Database Path
-        var directoryPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var directoryPath = AppDomain.CurrentDomain.BaseDirectory;
         var databasePath = Path.Join(directoryPath, "pocket.db");
 
         _databasePath = databasePath;

@@ -6,9 +6,7 @@ public class Eevee : Pokemon
 {
     // Properties
     public override string Name => nameof(Eevee);
-    public override int Health => 100;
-
-    // Properties
+    public override int MaxHealth => 100;
     public override int DamageMultiplier => 2;
 
     // Skill

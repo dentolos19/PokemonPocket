@@ -142,7 +142,7 @@ public static class BasicMenu
         foreach (var pet in pets)
         {
             Console.WriteLine($"Name: {pet.Name}");
-            Console.WriteLine($"Health: {pet.Health}");
+            Console.WriteLine($"Health: {pet.MaxHealth}");
             Console.WriteLine($"Experience: {pet.Experience}");
             Console.WriteLine($"Skill: {pet.SkillName}");
             Console.WriteLine("-----------------------");
@@ -183,8 +183,8 @@ public static class BasicMenu
 
             var evolvedPokemon = Program.Service.GetPokemon(master.EvolveTo);
             var evolvedPet = new Pokemon();
-            evolvedPet.EvolveTo(evolvedPokemon);
 
+            evolvedPet.EvolveTo(evolvedPokemon);
             evolvedPet.Health = 100;
             evolvedPet.Experience = 0;
 

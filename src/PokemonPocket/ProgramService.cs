@@ -33,21 +33,28 @@ public class ProgramService
         _context.Database.Migrate();
     }
 
+    public void SaveChanges()
+    {
+        _context.SaveChanges();
+    }
+
     #region Pets
 
     public void AddPet(Pokemon pokemon)
     {
-        _context.OwnedPokemons.Add(pokemon);
+        _context.Pets.Add(pokemon);
+        SaveChanges();
     }
 
     public Pokemon[] GetAllPets()
     {
-        return _context.OwnedPokemons.ToArray();
+        return _context.Pets.ToArray();
     }
 
     public void RemovePet(Pokemon pokemon)
     {
-        _context.OwnedPokemons.Remove(pokemon);
+        _context.Pets.Remove(pokemon);
+        SaveChanges();
     }
 
     #endregion
@@ -63,6 +70,11 @@ public class ProgramService
     {
         return _pokemons.FirstOrDefault(pokemon =>
             pokemon.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public Pokemon[] GetAllPokemons()
+    {
+        return _pokemons.ToArray();
     }
 
     #endregion
