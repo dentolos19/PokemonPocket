@@ -23,7 +23,7 @@ public class Pokemon
 
     public void CalculateDamage(int damage)
     {
-        Health -= damage * 1;
+        Health -= damage * DamageMultiplier;
     }
 
     public void EvolveTo(Pokemon pokemon)

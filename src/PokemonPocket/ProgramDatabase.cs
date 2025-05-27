@@ -13,8 +13,8 @@ public class ProgramDatabase : DbContext
     public ProgramDatabase()
     {
         // Configure Database Path
-        var directoryPath = AppDomain.CurrentDomain.BaseDirectory;
-        var databasePath = Path.Join(directoryPath, "pocket.db");
+        var currentDirectory = AppDomain.CurrentDomain.BaseDirectory;
+        var databasePath = Path.Join(currentDirectory, "pocket.db");
 
         _databasePath = databasePath;
     }

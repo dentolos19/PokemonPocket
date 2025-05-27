@@ -86,5 +86,10 @@ public class ProgramService
         return _masters.ToArray();
     }
 
+    public PokemonMaster? GetMaster(string name)
+    {
+        return _masters.FirstOrDefault(master => master.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+    }
+
     #endregion
 }

@@ -25,6 +25,7 @@ internal static class Program
 
         while (true)
         {
+            AnsiConsole.Clear();
             result.Invoke();
         }
     }

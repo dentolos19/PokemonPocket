@@ -14,7 +14,7 @@ public static class EnhancedMenu
                 "Catch A Pokémon".WithEmptyAction(),
                 "Add A Pokémon".WithAction(AddPokemon_SelectPokemon),
                 "View My Pokémons".WithAction(ViewPokemons_ListPokemons),
-                "Evolve My Pokémons".WithEmptyAction(),
+                "Evolve My Pokémons".WithAction(EvolvePokemon_ListEvolvables),
                 "Exit Pocket".WithAction(() => Environment.Exit(0))
             );
 
@@ -101,9 +101,9 @@ public static class EnhancedMenu
         var prompt = new SelectionPrompt<Selection>()
             .AddChoiceGroup(
                 "Actions".AsLabel(),
-                "Rename".WithAction(() => ViewPokemons_Select(ViewPokemons_Rename)),
-                "Heal".WithAction(() => ViewPokemons_Select(ViewPokemons_Heal)),
-                "Release".WithAction(() => ViewPokemons_Select(ViewPokemons_Release))
+                "Rename".WithAction(() => ViewPokemons_SelectPokemon(ViewPokemons_RenamePokemon)),
+                "Heal".WithAction(() => ViewPokemons_SelectPokemon(ViewPokemons_HealPokemon)),
+                "Release".WithAction(() => ViewPokemons_SelectPokemon(ViewPokemons_ReleasePokemon))
             ).AddChoices(
                 "Back To Menu".WithEmptyAction()
             );
@@ -112,7 +112,7 @@ public static class EnhancedMenu
         result.Invoke();
     }
 
-    public static void ViewPokemons_Select(Action<Pokemon> callback)
+    public static void ViewPokemons_SelectPokemon(Action<Pokemon> callback)
     {
         AnsiConsole.Clear();
 
@@ -145,7 +145,7 @@ public static class EnhancedMenu
         result.Invoke();
     }
 
-    public static void ViewPokemons_Rename(Pokemon pet)
+    public static void ViewPokemons_RenamePokemon(Pokemon pet)
     {
         var pokemon = Program.Service.GetPokemon(pet.Name);
         var petName = string.IsNullOrEmpty(pet.PetName) ? pokemon.Name : pet.PetName;
@@ -173,7 +173,7 @@ public static class EnhancedMenu
         Program.Service.SaveChanges();
     }
 
-    public static void ViewPokemons_Heal(Pokemon pet)
+    public static void ViewPokemons_HealPokemon(Pokemon pet)
     {
         AnsiConsole.Status().Start("Healing Pokemon...", context =>
         {
@@ -190,7 +190,7 @@ public static class EnhancedMenu
         Program.Service.SaveChanges();
     }
 
-    public static void ViewPokemons_Release(Pokemon pet)
+    public static void ViewPokemons_ReleasePokemon(Pokemon pet)
     {
         AnsiConsole.Status().Start("Releasing Pokemon...", context =>
         {
@@ -204,5 +204,109 @@ public static class EnhancedMenu
         });
 
         Program.Service.RemovePet(pet);
+    }
+
+    public static void EvolvePokemon_ListEvolvables()
+    {
+        var pets = Program.Service.GetAllPets();
+        var petGroups = pets.ToLookup(pet => pet.Name, pet => pet);
+        var evolvableGroups = petGroups.Where(group => Program.Service.GetMaster(group.Key)?.NoToEvolve > 0);
+
+        var table = new Table();
+
+        table.AddColumn("Name");
+        table.AddColumn("Amount");
+        table.AddColumn("Evolution");
+        table.AddColumn("Evolvable?");
+
+        foreach (var group in petGroups)
+        {
+            var pokemon = Program.Service.GetPokemon(group.Key);
+
+            if (pokemon is null)
+            {
+                continue;
+            }
+
+            var amount = group.Count().ToString();
+            var evolution = "N/A";
+            var evolvable = "[red bold]No[/]";
+
+            var master = Program.Service.GetMaster(group.Key);
+
+            if (master is not null)
+            {
+                amount = $"{group.Count()}/{master.NoToEvolve}";
+                evolution = master.EvolveTo;
+                evolvable = group.Count() >= master.NoToEvolve ? "[green bold]Yes[/]" : "[red bold]No[/]";
+            }
+
+            table.AddRow(pokemon.Name, amount, evolution, evolvable);
+        }
+
+        AnsiConsole.Write(table);
+        AnsiConsole.WriteLine();
+
+        var choices = evolvableGroups
+            .Select(entity => entity.Key.WithAction(() => EvolvePokemon_SelectSacrifices(entity)));
+
+        var prompt = new SelectionPrompt<Selection>()
+            .AddChoiceGroup("Eligible Pokemons".AsLabel(), choices)
+            .AddChoices("Back".WithEmptyAction());
+
+        var result = AnsiConsole.Prompt(prompt).ToAction();
+        result.Invoke();
+    }
+
+    public static void EvolvePokemon_SelectSacrifices(IGrouping<string, Pokemon> group)
+    {
+        var master = Program.Service.GetMaster(group.Key);
+        var evolution = Program.Service.GetPokemon(master.EvolveTo);
+        var sacrifices = new List<Pokemon>();
+
+        var choices = group.Select(pokemon =>
+        {
+            var name = pokemon.PetName ?? pokemon.Name;
+            var health = pokemon.Health;
+            var experience = pokemon.Experience;
+
+            return $"{name} (Health: {health}, Experience: {experience})".WithValue(pokemon.Id);
+        });
+
+        var prompt = new MultiSelectionPrompt<Selection>()
+            .Title("Pokemon Evolution")
+            .AddChoices(choices)
+            .InstructionsText($"Please select exactly {master.NoToEvolve} pokemon(s) from your pocket.");
+
+        while (true)
+        {
+            var ids = AnsiConsole.Prompt(prompt).ToValues<string>();
+
+            // Continue to prompt if the number of selections is not equal to the required amount
+            if (ids.Count != master.NoToEvolve)
+                continue;
+
+            sacrifices = ids.Select(id => group.First(pokemon => pokemon.Id == id)).ToList();
+            break;
+        }
+
+        AnsiConsole.Status().Start("Evolving Pokemon...", context =>
+        {
+            Thread.Sleep(2000);
+
+            context.Status($"Evolving {group.Key} with sacrifices...");
+            Thread.Sleep(5000);
+
+            context.Status("Pokemon evolved successfully!");
+            Thread.Sleep(2000);
+        });
+
+        foreach (var sacrifice in sacrifices)
+        {
+            Program.Service.RemovePet(sacrifice);
+        }
+
+        var pet = evolution.SpawnPet(null, 100, 0);
+        Program.Service.AddPet(pet);
     }
 }
