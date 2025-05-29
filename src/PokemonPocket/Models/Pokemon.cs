@@ -24,9 +24,17 @@ public class Pokemon
     public int Health { get; set; }
     public int Experience { get; set; }
 
-    public void CalculateDamage(int damage)
+    public int CalculateDamage(int damage)
     {
-        Health -= damage * DamageMultiplier;
+        var finalDamage = damage * DamageMultiplier;
+        Health -= finalDamage;
+
+        return finalDamage;
+    }
+
+    public int DealDamage()
+    {
+        return SkillDamage;
     }
 
     public void EvolveTo(Pokemon pokemon)
@@ -38,7 +46,7 @@ public class Pokemon
         DamageMultiplier = pokemon.DamageMultiplier;
     }
 
-    public Pokemon SpawnPet(string? name, int health, int experience)
+    public Pokemon SpawnPet(string? name = null, int health = 100, int experience = 0)
     {
         var pet = new Pokemon();
         pet.EvolveTo(this);

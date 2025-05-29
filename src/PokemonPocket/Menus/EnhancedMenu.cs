@@ -29,8 +29,8 @@ public static class EnhancedMenu
     {
         AnsiConsole.Clear();
 
-        var pokemons = Program.Service.GetAllPokemons();
-        var randomPokemon = pokemons.OrderBy(_ => Guid.NewGuid()).FirstOrDefault();
+        var availablePokemons = Program.Service.GetAllPokemons();
+        var randomPokemon = availablePokemons.OrderBy(_ => Guid.NewGuid()).First().SpawnPet();
 
         AnsiConsole.MarkupLineInterpolated($"A wild [yellow bold]{randomPokemon.Name}[/] has been spotted!");
         AnsiConsole.WriteLine();
@@ -38,7 +38,7 @@ public static class EnhancedMenu
         var prompt = new SelectionPrompt<Selection>()
             .AddChoiceGroup(
                 "Actions".AsLabel(),
-                "Target".WithEmptyAction(),
+                "Target".WithAction(() => CatchPokemon_Draft(randomPokemon)),
                 "Move On".WithAction(CatchPokemon_Wilding)
             ).AddChoices(
                 "Back To Menu".WithEmptyAction()
@@ -46,6 +46,144 @@ public static class EnhancedMenu
 
         var result = AnsiConsole.Prompt(prompt).ToAction();
         result.Invoke();
+    }
+
+    private static void CatchPokemon_Draft(Pokemon wild)
+    {
+        var pets = Program.Service.GetAllPets();
+        var groups = pets.ToLookup(pet => pet.Name, pet => pet);
+
+        var prompt = new SelectionPrompt<Selection>()
+            .Title("Choose Your Pokemon!")
+            .PageSize(100)
+            .EnableSearch();
+
+        foreach (var group in groups)
+        {
+            var choices = group.Where(pet => pet.Health > 0).Select(draft =>
+            {
+                var name = draft.PetName;
+                var health = draft.Health;
+                var experience = draft.Experience;
+
+                return $"{name} (Health: {health}, Experience: {experience})"
+                    .WithAction(() => CatchPokemon_Catch(wild, draft));
+            });
+
+            prompt.AddChoiceGroup(group.Key.AsLabel(), choices);
+        }
+
+        prompt.AddChoices("Back".WithEmptyAction());
+
+        var result = AnsiConsole.Prompt(prompt).ToAction();
+        result.Invoke();
+    }
+
+    private static void CatchPokemon_Catch(Pokemon wild, Pokemon draft)
+    {
+        // Declare the wild's and draft's names
+        var wildName = wild.Name;
+        var draftName = string.IsNullOrEmpty(draft.PetName) ? draft.Name : draft.PetName;
+
+        // Declare the wild's and draft's entities
+        var wildHealth = wild.Health;
+        var draftHealth = draft.Health;
+
+        while (true)
+        {
+            AnsiConsole.Clear();
+
+            var wildHealthBar = new BarChartItem(wildName, wildHealth, Color.Red);
+            var petHealthBar = new BarChartItem(draftName, draftHealth, Color.Green);
+
+            var chart = new BarChart()
+                .Width(50)
+                .AddItem(wildHealthBar)
+                .AddItem(petHealthBar);
+
+            AnsiConsole.WriteLine("Battle!");
+            AnsiConsole.WriteLine();
+            AnsiConsole.Write(chart);
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLineInterpolated($"[bold red]{wildName}[/] HP: {wildHealth}");
+            AnsiConsole.MarkupLineInterpolated($"[bold green]{draftName}[/] HP: {draftHealth}");
+            AnsiConsole.WriteLine();
+
+            // If both are defeated...
+            if (draftHealth <= 0 && wildHealth <= 0)
+            {
+                AnsiConsole.MarkupLineInterpolated($"Both have fainted!" );
+                AnsiConsole.WriteLine();
+
+                draft.Health = 0;
+                wild.Health = 0;
+                Program.Service.SaveChanges();
+
+                Console.ReadKey();
+                break;
+            }
+
+            // If the draft is defeated...
+            if (draftHealth <= 0)
+            {
+                AnsiConsole.MarkupLineInterpolated($"[bold green]{draftName}[/] has fainted!");
+                AnsiConsole.WriteLine();
+
+                draft.Health = 0;
+                // pet.Experience += wildEntity.Experience;
+                Program.Service.SaveChanges();
+
+                Console.ReadKey();
+                break;
+            }
+
+            // If the wild is defeated...
+            if (wildHealth <= 0)
+            {
+                AnsiConsole.MarkupLineInterpolated($"You have caught [bold red]{wildName}[/]!");
+                AnsiConsole.WriteLine();
+
+                draft.Health = draftHealth;
+                // pet.Experience += wildEntity.Experience;
+
+                var pet = wild.SpawnPet();
+                Program.Service.AddPet(pet);
+                Program.Service.SaveChanges();
+
+                Console.ReadKey();
+                break;
+            }
+
+            var wildDamage = 0;
+            var petDamage = 0;
+
+            var prompt = new SelectionPrompt<Selection>()
+                .AddChoiceGroup(
+                    "Actions".AsLabel(),
+                    "Attack".WithAction(() =>
+                    {
+                        wildDamage = wild.CalculateDamage(draft.DealDamage());
+                        petDamage = draft.CalculateDamage(wild.DealDamage());
+                    })
+                );
+
+            var result = AnsiConsole.Prompt(prompt).ToAction();
+            result.Invoke();
+
+            AnsiConsole.MarkupLineInterpolated(
+                $"[bold green]{draftName}[/] have dealt [bold green]{petDamage}[/] damage to [bold red]{wildName}[/]!"
+            );
+
+            Thread.Sleep(2000);
+            wildHealth -= petDamage;
+
+            AnsiConsole.MarkupLineInterpolated(
+                $"[bold red]{wildName}[/] has dealt [bold green]{wildDamage}[/] damage to [bold green]{draftName}[/]!"
+            );
+
+            Thread.Sleep(2000);
+            draftHealth -= wildDamage;
+        }
     }
 
     private static void AddPokemon_SelectPokemon()
