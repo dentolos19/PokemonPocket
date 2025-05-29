@@ -1,4 +1,7 @@
-﻿using PokemonPocket.Helpers;
+﻿// Catolos Alvaro Dennise Jay San Juan
+// 231292A
+
+using PokemonPocket.Helpers;
 using PokemonPocket.Models;
 using Spectre.Console;
 
@@ -11,11 +14,34 @@ public static class EnhancedMenu
         var prompt = new SelectionPrompt<Selection>()
             .Title("Pokémon Pocket")
             .AddChoices(
-                "Catch A Pokémon".WithEmptyAction(),
+                "Catch A Pokémon".WithAction(CatchPokemon_Wilding),
                 "Add A Pokémon".WithAction(AddPokemon_SelectPokemon),
                 "View My Pokémons".WithAction(ViewPokemons_ListPokemons),
                 "Evolve My Pokémons".WithAction(EvolvePokemon_ListEvolvables),
                 "Exit Pocket".WithAction(() => Environment.Exit(0))
+            );
+
+        var result = AnsiConsole.Prompt(prompt).ToAction();
+        result.Invoke();
+    }
+
+    private static void CatchPokemon_Wilding()
+    {
+        AnsiConsole.Clear();
+
+        var pokemons = Program.Service.GetAllPokemons();
+        var randomPokemon = pokemons.OrderBy(_ => Guid.NewGuid()).FirstOrDefault();
+
+        AnsiConsole.MarkupLineInterpolated($"A wild [yellow bold]{randomPokemon.Name}[/] has been spotted!");
+        AnsiConsole.WriteLine();
+
+        var prompt = new SelectionPrompt<Selection>()
+            .AddChoiceGroup(
+                "Actions".AsLabel(),
+                "Target".WithEmptyAction(),
+                "Move On".WithAction(CatchPokemon_Wilding)
+            ).AddChoices(
+                "Back To Menu".WithEmptyAction()
             );
 
         var result = AnsiConsole.Prompt(prompt).ToAction();
@@ -208,9 +234,15 @@ public static class EnhancedMenu
 
     public static void EvolvePokemon_ListEvolvables()
     {
+        // Retrieve all pokemon owned by the user
         var pets = Program.Service.GetAllPets();
+
+        // Group the pokemons by their type
         var petGroups = pets.ToLookup(pet => pet.Name, pet => pet);
-        var evolvableGroups = petGroups.Where(group => Program.Service.GetMaster(group.Key)?.NoToEvolve > 0);
+
+        // Filter groups that can be evolved
+        var evolvableGroups =
+            petGroups.Where(group => group.Count() > Program.Service.GetMaster(group.Key)?.NoToEvolve);
 
         var table = new Table();
 
@@ -248,13 +280,19 @@ public static class EnhancedMenu
         AnsiConsole.WriteLine();
 
         var choices = evolvableGroups
-            .Select(entity => entity.Key.WithAction(() => EvolvePokemon_SelectSacrifices(entity)));
+            .Select(entity => entity.Key.WithAction(() => EvolvePokemon_SelectSacrifices(entity))).ToArray();
 
-        var prompt = new SelectionPrompt<Selection>()
-            .AddChoiceGroup("Eligible Pokemons".AsLabel(), choices)
-            .AddChoices("Back".WithEmptyAction());
+        var prompt = new SelectionPrompt<Selection>();
+
+        if (choices.Length > 0)
+        {
+            prompt.AddChoiceGroup("Evolve Pokemon".AsLabel(), choices);
+        }
+
+        prompt = prompt.AddChoices("Back".WithEmptyAction());
 
         var result = AnsiConsole.Prompt(prompt).ToAction();
+        AnsiConsole.Clear();
         result.Invoke();
     }
 

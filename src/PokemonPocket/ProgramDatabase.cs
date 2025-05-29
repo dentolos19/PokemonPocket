@@ -1,4 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿// Catolos Alvaro Dennise Jay San Juan
+// 231292A
+
+using Microsoft.EntityFrameworkCore;
 using PokemonPocket.Models;
 
 namespace PokemonPocket;

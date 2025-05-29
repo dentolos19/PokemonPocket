@@ -1,4 +1,7 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿// Catolos Alvaro Dennise Jay San Juan
+// 231292A
+
+using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 
 namespace PokemonPocket.Models;

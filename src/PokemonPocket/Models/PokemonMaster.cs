@@ -1,4 +1,7 @@
-﻿namespace PokemonPocket.Models;
+﻿// Catolos Alvaro Dennise Jay San Juan
+// 231292A
+
+namespace PokemonPocket.Models;
 
 public class PokemonMaster
 {
@@ -11,6 +14,12 @@ public class PokemonMaster
         Name = name;
         NoToEvolve = noToEvolve;
         EvolveTo = evolveTo;
+    }
+
+    public bool CanEvolve(Pokemon[] pokemons)
+    {
+        var number = pokemons.Count(pokemon => pokemon.Name == Name);
+        return number > 0;
     }
 
     public int GetEvolvableAmount(Pokemon[] pokemons)

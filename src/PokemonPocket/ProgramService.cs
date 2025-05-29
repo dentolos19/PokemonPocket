@@ -1,4 +1,7 @@
-﻿using System.Reflection;
+﻿// Catolos Alvaro Dennise Jay San Juan
+// 231292A
+
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using PokemonPocket.Entities;
 using PokemonPocket.Models;

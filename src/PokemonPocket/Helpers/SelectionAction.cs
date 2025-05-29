@@ -1,4 +1,7 @@
-﻿namespace PokemonPocket.Helpers;
+﻿// Catolos Alvaro Dennise Jay San Juan
+// 231292A
+
+namespace PokemonPocket.Helpers;
 
 public class SelectionAction(string label, Action callback) : Selection(label)
 {

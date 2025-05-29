@@ -1,4 +1,7 @@
-﻿using PokemonPocket.Helpers;
+﻿// Catolos Alvaro Dennise Jay San Juan
+// 231292A
+
+using PokemonPocket.Helpers;
 using PokemonPocket.Menus;
 using PokemonPocket.Models;
 using Spectre.Console;

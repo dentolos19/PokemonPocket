@@ -1,4 +1,7 @@
-﻿using PokemonPocket.Models;
+﻿// Catolos Alvaro Dennise Jay San Juan
+// 231292A
+
+using PokemonPocket.Models;
 
 namespace PokemonPocket.Entities;
 
