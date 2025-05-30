@@ -1,14 +1,20 @@
-﻿using PokemonPocket.Models;
+﻿// Catolos Alvaro Dennise Jay San Juan
+// 231292A
+
+using PokemonPocket.Models;
 
 namespace PokemonPocket.Entities;
 
-public class Charmander() : PokemonEntity("813E039C-7EFA-4AB5-A2F9-A04FBF40EF2A")
+public class Charmander : Pokemon
 {
+    // Properties
     public override string Name => nameof(Charmander);
+    public override int MaxHealth => 100;
 
-    public override string SkillName => "Solar";
+    // Properties
+    public override int DamageMultiplier => 1;
+
+    // Skill
+    public override string SkillName => "Solar Power";
     public override int SkillDamage => 10;
-
-    public override Type NextEvolutionType => typeof(Charmeleon);
-    public override int MinimumEvolutionAmount => 1;
 }

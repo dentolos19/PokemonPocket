@@ -1,11 +1,18 @@
-﻿using PokemonPocket.Models;
+﻿// Catolos Alvaro Dennise Jay San Juan
+// 231292A
+
+using PokemonPocket.Models;
 
 namespace PokemonPocket.Entities;
 
-public class Charmeleon() : PokemonEntity("27170FFD-CA65-4B7B-A814-28C5F4509F94")
+public class Charmeleon : Pokemon
 {
+    // Properties
     public override string Name => nameof(Charmeleon);
+    public override int MaxHealth => 100;
+    public override int DamageMultiplier => 3;
 
-    public override string SkillName => "Flame Burst";
+    // Skill
+    public override string SkillName => "Thunderbolt";
     public override int SkillDamage => 30;
 }

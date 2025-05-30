@@ -1,4 +1,7 @@
-﻿namespace PokemonPocket.Helpers;
+﻿// Catolos Alvaro Dennise Jay San Juan
+// 231292A
+
+namespace PokemonPocket.Helpers;
 
 public static class SelectionExtensions
 {
@@ -27,10 +30,10 @@ public static class SelectionExtensions
         return new SelectionValue<T?>(label, default);
     }
 
-    public static SelectionAction ToAction(this Selection selection)
+    public static Action ToAction(this Selection selection)
     {
         if (selection is SelectionAction action)
-            return action;
+            return action.Callback;
         throw new Exception("Invalid selection type.");
     }
 

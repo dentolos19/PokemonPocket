@@ -1,11 +1,18 @@
-﻿using PokemonPocket.Models;
+﻿// Catolos Alvaro Dennise Jay San Juan
+// 231292A
+
+using PokemonPocket.Models;
 
 namespace PokemonPocket.Entities;
 
-public class Flareon() : PokemonEntity("F7BBC4DB-4941-4A4D-8235-04B501D27A45")
+public class Flareon : Pokemon
 {
+    // Properties
     public override string Name => nameof(Flareon);
+    public override int MaxHealth => 100;
+    public override int DamageMultiplier => 3;
 
-    public override string SkillName => "Fire Spin";
-    public override int SkillDamage => 40;
+    // Skill
+    public override string SkillName => "Thunderbolt";
+    public override int SkillDamage => 30;
 }
