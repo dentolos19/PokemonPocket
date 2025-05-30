@@ -7,21 +7,22 @@ namespace PokemonPocket.Menus;
 
 public static class BasicMenu
 {
-    public static void Start()
+    public static void Entry()
     {
         Console.WriteLine("*****************************");
-        Console.WriteLine("Welcome to Pokemon Pocket App");
+        Console.WriteLine("Welcome to Pokémon Pocket App");
         Console.WriteLine("*****************************");
         Console.WriteLine();
         Console.WriteLine("1. Add a pokemon to my pocket");
         Console.WriteLine("2. List pokemon(s) in my pocket");
         Console.WriteLine("3. Check if I can evolve my pokemons");
         Console.WriteLine("4. Evolve all pokemon(s)");
+        Console.WriteLine("5. Switch to Enhanced Menu");
         Console.WriteLine();
 
         while (true)
         {
-            Console.Write("Please only enter [1,2,3,4] or Q to quit: ");
+            Console.Write("Please only enter [1,2,3,4,5] or Q to quit: ");
             var input = Console.ReadLine()?.Trim().ToLower();
 
             switch (input)
@@ -45,6 +46,9 @@ public static class BasicMenu
                     Console.WriteLine();
                     EvolveAll();
                     Console.WriteLine();
+                    return;
+                case "5":
+                    Program.ToggleMenu();
                     return;
                 case "q":
                     Environment.Exit(0);

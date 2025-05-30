@@ -54,6 +54,11 @@ public class ProgramService
         return _context.Pets.ToArray();
     }
 
+    public Pokemon[] GetPokemonPets(string pokemonName)
+    {
+        return _context.Pets.Where(pet => pet.Name.Equals(pokemonName)).ToArray();
+    }
+
     public void RemovePet(Pokemon pokemon)
     {
         _context.Pets.Remove(pokemon);

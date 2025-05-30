@@ -9,16 +9,23 @@ namespace PokemonPocket.Menus;
 
 public static class EnhancedMenu
 {
-    public static void Start()
+    public static void Entry()
     {
+        var figlet = new FigletText("Pokémon Pocket");
+        AnsiConsole.Write(figlet);
+
         var prompt = new SelectionPrompt<Selection>()
-            .Title("Pokémon Pocket")
-            .AddChoices(
+            .AddChoiceGroup(
+                "Actions".AsLabel(),
                 "Catch A Pokémon".WithAction(CatchPokemon_Wilding),
                 "Add A Pokémon".WithAction(AddPokemon_SelectPokemon),
                 "View My Pokémons".WithAction(ViewPokemons_ListPokemons),
-                "Evolve My Pokémons".WithAction(EvolvePokemon_ListEvolvables),
-                "Exit Pocket".WithAction(() => Environment.Exit(0))
+                "Evolve My Pokémons".WithAction(EvolvePokemon_ListEvolvables)
+            )
+            .AddChoiceGroup(
+                "Pocket".AsLabel(),
+                "Switch To Basic Menu".WithAction(() => { Program.ToggleMenu(); }),
+                "Exit My Pocket".WithAction(() => { Environment.Exit(0); })
             );
 
         var result = AnsiConsole.Prompt(prompt).ToAction();
@@ -38,10 +45,10 @@ public static class EnhancedMenu
         var prompt = new SelectionPrompt<Selection>()
             .AddChoiceGroup(
                 "Actions".AsLabel(),
-                "Target".WithAction(() => CatchPokemon_Draft(randomPokemon)),
+                "Target Pokemon".WithAction(() => CatchPokemon_Draft(randomPokemon)),
                 "Move On".WithAction(CatchPokemon_Wilding)
             ).AddChoices(
-                "Back To Menu".WithEmptyAction()
+                "Back To Base".WithEmptyAction()
             );
 
         var result = AnsiConsole.Prompt(prompt).ToAction();
@@ -54,15 +61,18 @@ public static class EnhancedMenu
         var groups = pets.ToLookup(pet => pet.Name, pet => pet);
 
         var prompt = new SelectionPrompt<Selection>()
-            .Title("Choose Your Pokemon!")
             .PageSize(100)
             .EnableSearch();
 
         foreach (var group in groups)
         {
-            var choices = group.Where(pet => pet.Health > 0).Select(draft =>
+            var availablePets = group.Where(pet => pet.Health > 0).ToArray();
+            if (availablePets.Length <= 0)
+                continue;
+
+            var choices = availablePets.Select(draft =>
             {
-                var name = draft.PetName;
+                var name = string.IsNullOrEmpty(draft.PetName) ? draft.Name : draft.PetName;
                 var health = draft.Health;
                 var experience = draft.Experience;
 
@@ -96,8 +106,10 @@ public static class EnhancedMenu
             var wildHealthBar = new BarChartItem(wildName, wildHealth, Color.Red);
             var petHealthBar = new BarChartItem(draftName, draftHealth, Color.Green);
 
+            // Render health bars
             var chart = new BarChart()
                 .Width(50)
+                .WithMaxValue(100)
                 .AddItem(wildHealthBar)
                 .AddItem(petHealthBar);
 
@@ -112,7 +124,7 @@ public static class EnhancedMenu
             // If both are defeated...
             if (draftHealth <= 0 && wildHealth <= 0)
             {
-                AnsiConsole.MarkupLineInterpolated($"Both have fainted!" );
+                AnsiConsole.MarkupLineInterpolated($"Both have fainted!");
                 AnsiConsole.WriteLine();
 
                 draft.Health = 0;
@@ -174,7 +186,7 @@ public static class EnhancedMenu
                 $"[bold green]{draftName}[/] have dealt [bold green]{petDamage}[/] damage to [bold red]{wildName}[/]!"
             );
 
-            Thread.Sleep(2000);
+            Thread.Sleep(1000);
             wildHealth -= petDamage;
 
             AnsiConsole.MarkupLineInterpolated(
@@ -192,7 +204,6 @@ public static class EnhancedMenu
         var choices = pokemons.Select(pokemon => pokemon.Name.WithAction(() => AddPokemon_SetDetails(pokemon.Name)));
 
         var prompt = new SelectionPrompt<Selection>()
-            .Title("Add A Pokemon")
             .AddChoiceGroup(
                 "Available Pokemons".AsLabel(),
                 choices.ToArray()
@@ -208,8 +219,6 @@ public static class EnhancedMenu
     {
         var pokemon = Program.Service.GetPokemon(pokemonName);
 
-        AnsiConsole.WriteLine("Pokemon Pocket");
-        AnsiConsole.WriteLine();
         AnsiConsole.MarkupLineInterpolated($"You are about to add [bold yellow]{pokemon.Name}[/]!");
         AnsiConsole.WriteLine();
 
@@ -293,7 +302,7 @@ public static class EnhancedMenu
             var groupChoices = group.Select(pet =>
             {
                 var name = string.IsNullOrEmpty(pet.PetName) ? pet.Name : pet.PetName;
-                var health = pet.MaxHealth;
+                var health = pet.Health;
                 var experience = pet.Experience;
 
                 return $"{name} (Health: {health}, Experience: {experience})"
@@ -350,7 +359,7 @@ public static class EnhancedMenu
             Thread.Sleep(2000);
         });
 
-        pet.Health = 100;
+        pet.Health = pet.MaxHealth;
         Program.Service.SaveChanges();
     }
 
@@ -372,15 +381,9 @@ public static class EnhancedMenu
 
     public static void EvolvePokemon_ListEvolvables()
     {
-        // Retrieve all pokemon owned by the user
         var pets = Program.Service.GetAllPets();
-
-        // Group the pokemons by their type
         var petGroups = pets.ToLookup(pet => pet.Name, pet => pet);
-
-        // Filter groups that can be evolved
-        var evolvableGroups =
-            petGroups.Where(group => group.Count() > Program.Service.GetMaster(group.Key)?.NoToEvolve);
+        var evolvablePokemons = new List<string>();
 
         var table = new Table();
 
@@ -392,15 +395,12 @@ public static class EnhancedMenu
         foreach (var group in petGroups)
         {
             var pokemon = Program.Service.GetPokemon(group.Key);
-
             if (pokemon is null)
-            {
                 continue;
-            }
 
             var amount = group.Count().ToString();
             var evolution = "N/A";
-            var evolvable = "[red bold]No[/]";
+            var evolvable = "[red]No[/]";
 
             var master = Program.Service.GetMaster(group.Key);
 
@@ -408,7 +408,12 @@ public static class EnhancedMenu
             {
                 amount = $"{group.Count()}/{master.NoToEvolve}";
                 evolution = master.EvolveTo;
-                evolvable = group.Count() >= master.NoToEvolve ? "[green bold]Yes[/]" : "[red bold]No[/]";
+
+                if (master.CanEvolve(pets))
+                {
+                    evolvable = "[green]Yes[/]";
+                    evolvablePokemons.Add(master.Name);
+                }
             }
 
             table.AddRow(pokemon.Name, amount, evolution, evolvable);
@@ -417,30 +422,31 @@ public static class EnhancedMenu
         AnsiConsole.Write(table);
         AnsiConsole.WriteLine();
 
-        var choices = evolvableGroups
-            .Select(entity => entity.Key.WithAction(() => EvolvePokemon_SelectSacrifices(entity))).ToArray();
+        // var evolvableGroups = petGroups
+        //     .Where(group => evolvablePokemons.Contains(group.Key));
 
-        var prompt = new SelectionPrompt<Selection>();
-
-        if (choices.Length > 0)
-        {
-            prompt.AddChoiceGroup("Evolve Pokemon".AsLabel(), choices);
-        }
-
-        prompt = prompt.AddChoices("Back".WithEmptyAction());
+        var prompt = new SelectionPrompt<Selection>()
+            .AddChoiceGroup(
+                "Evolvable Pokemons".AsLabel(),
+                evolvablePokemons.Select(name => name.WithAction(() => EvolvePokemon_SelectSacrifices(name))
+                ))
+            .AddChoices(
+                "Back To Menu".WithEmptyAction()
+            );
 
         var result = AnsiConsole.Prompt(prompt).ToAction();
         AnsiConsole.Clear();
         result.Invoke();
     }
 
-    public static void EvolvePokemon_SelectSacrifices(IGrouping<string, Pokemon> group)
+    public static void EvolvePokemon_SelectSacrifices(string name)
     {
-        var master = Program.Service.GetMaster(group.Key);
+        var master = Program.Service.GetMaster(name);
+        var pokemons = Program.Service.GetPokemonPets(name);
         var evolution = Program.Service.GetPokemon(master.EvolveTo);
         var sacrifices = new List<Pokemon>();
 
-        var choices = group.Select(pokemon =>
+        var choices = pokemons.Select(pokemon =>
         {
             var name = pokemon.PetName ?? pokemon.Name;
             var health = pokemon.Health;
@@ -462,7 +468,7 @@ public static class EnhancedMenu
             if (ids.Count != master.NoToEvolve)
                 continue;
 
-            sacrifices = ids.Select(id => group.First(pokemon => pokemon.Id == id)).ToList();
+            sacrifices = ids.Select(id => pokemons.First(pokemon => pokemon.Id == id)).ToList();
             break;
         }
 
@@ -470,7 +476,7 @@ public static class EnhancedMenu
         {
             Thread.Sleep(2000);
 
-            context.Status($"Evolving {group.Key} with sacrifices...");
+            context.Status($"Evolving {name} with sacrifices...");
             Thread.Sleep(5000);
 
             context.Status("Pokemon evolved successfully!");
@@ -482,7 +488,7 @@ public static class EnhancedMenu
             Program.Service.RemovePet(sacrifice);
         }
 
-        var pet = evolution.SpawnPet(null, 100, 0);
+        var pet = evolution.SpawnPet();
         Program.Service.AddPet(pet);
     }
 }
