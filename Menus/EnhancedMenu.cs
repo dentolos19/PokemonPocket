@@ -24,7 +24,8 @@ public static class EnhancedMenu
                 "Catch A Pokémon".WithAction(CatchPokemon_Wilding),
                 "Add A Pokémon".WithAction(AddPokemon_SelectPokemon),
                 "View My Pokémons".WithAction(ViewPokemons_ListPokemons),
-                "Evolve My Pokémons".WithAction(EvolvePokemon_ListEvolvables)
+                "Evolve My Pokémons".WithAction(EvolvePokemon_ListEvolvables),
+                "View Evolution Chains".WithAction(EvolutionChains)
             )
             .AddChoiceGroup(
                 "My Pocket".AsLabel(),
@@ -348,7 +349,7 @@ public static class EnhancedMenu
         result.Invoke();
     }
 
-    public static void ViewPokemons_SelectPokemon(Action<Pokemon> callback)
+    private static void ViewPokemons_SelectPokemon(Action<Pokemon> callback)
     {
         var pokemons = Program.Service.GetAllPokemons();
         var groups = pokemons.ToLookup(pet => pet.Name, pet => pet);
@@ -384,7 +385,7 @@ public static class EnhancedMenu
         result.Invoke();
     }
 
-    public static void ViewPokemons_RenamePokemon(Pokemon pokemon)
+    private static void ViewPokemons_RenamePokemon(Pokemon pokemon)
     {
         var name = pokemon.GetName();
 
@@ -409,7 +410,7 @@ public static class EnhancedMenu
         Program.Service.SaveChanges();
     }
 
-    public static void ViewPokemons_HealPokemon(Pokemon pokemon)
+    private static void ViewPokemons_HealPokemon(Pokemon pokemon)
     {
         var name = pokemon.GetName();
 
@@ -455,7 +456,7 @@ public static class EnhancedMenu
         Program.Service.SaveChanges();
     }
 
-    public static void ViewPokemons_ReleasePokemon(Pokemon pokemon)
+    private static void ViewPokemons_ReleasePokemon(Pokemon pokemon)
     {
         AnsiConsole.MarkupLineInterpolated($"You are about to release [yellow]{pokemon.GetName()}[/] into the wild!");
         AnsiConsole.MarkupLineInterpolated($"This action is [red]permanent[/] and will not be reversible.");
@@ -479,34 +480,34 @@ public static class EnhancedMenu
         Program.Service.RemovePokemon(pokemon);
     }
 
-    public static void EvolvePokemon_ListEvolvables()
+    private static void EvolvePokemon_ListEvolvables()
     {
         var pokemons = Program.Service.GetAllPokemons();
-        var groups = pokemons.ToLookup(pet => pet.Name, pet => pet);
+        var groups = pokemons.ToLookup(pokemon => pokemon.Name, pokemon => pokemon);
 
         var masters = Program.Service.GetAllMasters();
         var eligibles = new List<PokemonMaster>();
 
         var table = new Table();
 
-        table.AddColumn("From");
-        table.AddColumn("To");
-        table.AddColumn("Amount");
+        table.AddColumn("From Species");
+        table.AddColumn("To Species");
+        table.AddColumn("Required Amount");
         table.AddColumn("Evolvable?");
         table.Expand();
 
         foreach (var master in masters)
         {
-            var from = master.Name;
-            var to = master.EvolveTo;
+            var fromSpecies = $"[yellow]{master.Name}[/]";
+            var toSpecies = $"[green]{master.EvolveTo}[/]";
 
-            var fromNumber = groups.Contains(from) ? groups[from].Count() : 0;
-            var requiredAmount = master.NoToEvolve;
+            var currentCount = groups.Contains(fromSpecies) ? groups[fromSpecies].Count() : 0;
+            var requiredCount = master.NoToEvolve;
 
-            if (fromNumber <= 0)
+            if (currentCount <= 0)
                 continue;
 
-            var amount = $"{fromNumber}/{requiredAmount}";
+            var requiredAmount = $"{currentCount}/{requiredCount}";
             var evolvable = "[red]No[/]";
 
             if (master.CanEvolve(pokemons))
@@ -515,14 +516,14 @@ public static class EnhancedMenu
                 eligibles.Add(master);
             }
 
-            table.AddRow(from, to, amount, evolvable);
+            table.AddRow(fromSpecies, toSpecies, requiredAmount, evolvable);
         }
-
-        AnsiConsole.Write(table);
-        AnsiConsole.WriteLine();
 
         if (eligibles.Count > 0)
         {
+            AnsiConsole.Write(table);
+            AnsiConsole.WriteLine();
+
             var prompt = new SelectionPrompt<Selection>()
                 .AddChoiceGroup(
                     "Evolvable Masters".AsLabel(),
@@ -543,7 +544,7 @@ public static class EnhancedMenu
         }
     }
 
-    public static void EvolvePokemon_SelectSacrifices(PokemonMaster master)
+    private static void EvolvePokemon_SelectSacrifices(PokemonMaster master)
     {
         var title = new FigletText("Pokémon Pocket").Color(Color.Yellow).Centered();
         var subtitle = new Rule("Evolution Center!").RuleStyle(new Style(Color.Green));
@@ -608,5 +609,89 @@ public static class EnhancedMenu
 
         var pokemon = evolution.SpawnPokemon();
         Program.Service.AddPokemon(pokemon);
+    }
+
+    private static void EvolutionChains()
+    {
+        var title = new FigletText("Pokémon Pocket").Color(Color.Yellow).Centered();
+        var subtitle = new Rule("Evolution Chains!").RuleStyle(new Style(Color.Green));
+
+        AnsiConsole.Clear();
+        AnsiConsole.Write(title);
+        AnsiConsole.Write(subtitle);
+        AnsiConsole.WriteLine();
+
+        var masters = Program.Service.GetAllMasters();
+        var chains = new Dictionary<string, List<PokemonMaster>>();
+        var processed = new HashSet<string>();
+
+        foreach (var master in masters)
+        {
+            if (processed.Contains(master.Name))
+                continue;
+
+            // Find the start of this evolution chain
+            var chainStart = Utilities.FindChainStart(master.Name, masters);
+            if (processed.Contains(chainStart))
+                continue;
+
+            // Build the complete chain from start
+            var chain = new List<PokemonMaster>();
+            var currentSpecies = chainStart;
+
+            while (true)
+            {
+                var evolutionRule = masters.FirstOrDefault(master => master.Name == currentSpecies);
+                if (evolutionRule == null)
+                    break;
+
+                chain.Add(evolutionRule);
+                processed.Add(currentSpecies);
+                currentSpecies = evolutionRule.EvolveTo;
+
+                // Check if this evolution leads to another evolution
+                if (!masters.Any(master => master.Name == currentSpecies))
+                    break;
+            }
+
+            if (chain.Count > 0)
+            {
+                chains[chainStart] = chain;
+            }
+        }
+
+        var table = new Table();
+
+        table.AddColumn("Evolution Chain");
+        table.AddColumn("Requirements");
+        table.Expand();
+
+        foreach (var (chainStart, chainMasters) in chains)
+        {
+            var chainDisplay = new List<string>();
+            var requirementDisplay = new List<string>();
+
+            // Add the first species (base form)
+            chainDisplay.Add($"[cyan]{chainStart}[/]");
+            requirementDisplay.Add("-");
+
+            // Add each evolution step
+            foreach (var master in chainMasters)
+            {
+                chainDisplay.Add($"[yellow]{master.EvolveTo}[/]");
+                requirementDisplay.Add($"[dim]{master.NoToEvolve} {master.Name}[/]");
+            }
+
+            var chainText = string.Join(" -> ", chainDisplay);
+            var requirementText = string.Join(" -> ", requirementDisplay);
+
+            table.AddRow(chainText, requirementText);
+        }
+
+        AnsiConsole.Write(table);
+        AnsiConsole.WriteLine();
+
+        AnsiConsole.MarkupLine("[dim]Press any key to return to menu...[/]");
+        Console.ReadKey(true);
     }
 }
