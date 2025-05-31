@@ -46,6 +46,11 @@ public class Pokemon
         DamageMultiplier = pokemon.DamageMultiplier;
     }
 
+    public string GetName()
+    {
+        return string.IsNullOrEmpty(PetName) ? Name : PetName;
+    }
+
     public Pokemon SpawnPet(string? name = null, int health = 100, int experience = 0)
     {
         var pet = new Pokemon();

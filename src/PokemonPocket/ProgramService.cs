@@ -16,7 +16,10 @@ public class ProgramService
 
     public ProgramService()
     {
+        // Setup Database
         _context = new ProgramDatabase();
+
+        // Load Masters
         _masters = new List<PokemonMaster>
         {
             new(nameof(Pikachu), 2, nameof(Raichu)),
@@ -49,8 +52,6 @@ public class ProgramService
         _context.SaveChanges();
     }
 
-    #region Pets
-
     public void AddPet(Pokemon pokemon)
     {
         _context.Pets.Add(pokemon);
@@ -73,10 +74,6 @@ public class ProgramService
         SaveChanges();
     }
 
-    #endregion
-
-    #region Pokemons
-
     public bool CheckPokemonExists(string name)
     {
         return _pokemons.Any(pokemon => pokemon.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
@@ -84,18 +81,13 @@ public class ProgramService
 
     public Pokemon? GetPokemon(string name)
     {
-        return _pokemons.FirstOrDefault(pokemon =>
-            pokemon.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        return _pokemons.FirstOrDefault(pokemon => pokemon.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
     }
 
     public Pokemon[] GetAllPokemons()
     {
         return _pokemons.ToArray();
     }
-
-    #endregion
-
-    #region Masters
 
     public PokemonMaster[] GetAllMasters()
     {
@@ -106,6 +98,4 @@ public class ProgramService
     {
         return _masters.FirstOrDefault(master => master.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
     }
-
-    #endregion
 }
