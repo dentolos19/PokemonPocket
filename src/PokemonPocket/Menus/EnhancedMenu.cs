@@ -286,10 +286,17 @@ public static class EnhancedMenu
         {
             var pokemonName = pet.Name;
             var petName = string.IsNullOrEmpty(pet.PetName) ? string.Empty : pet.PetName;
-            var health = pet.Health;
+            var health = $"{pet.Health}/{pet.MaxHealth}";
             var experience = pet.Experience;
 
-            table.AddRow(pokemonName, petName, health.ToString(), experience.ToString());
+            if (pet.Health >= pet.MaxHealth - 10)
+                health = $"[green]{health}[/]";
+            else if (pet.Health <= 10)
+                health = $"[red]{health}[/]";
+            else
+                health = $"[yellow]{health}[/]";
+
+            table.AddRow(pokemonName, petName, health, experience.ToString());
         }
 
         AnsiConsole.Write(table);
@@ -325,9 +332,16 @@ public static class EnhancedMenu
             var groupName = group.Key;
             var groupChoices = group.Select(pet =>
             {
-                var name = string.IsNullOrEmpty(pet.PetName) ? pet.Name : pet.PetName;
-                var health = pet.Health;
+                var name = pet.GetName();
+                var health = $"{pet.Health}/{pet.MaxHealth}";
                 var experience = pet.Experience;
+
+                if (pet.Health >= pet.MaxHealth - 10)
+                    health = $"[green]{health}[/]";
+                else if (pet.Health <= 10)
+                    health = $"[red]{health}[/]";
+                else
+                    health = $"[yellow]{health}[/]";
 
                 return $"{name} (Health: {health}, Experience: {experience})"
                     .WithAction(() => callback(pet));
@@ -347,7 +361,7 @@ public static class EnhancedMenu
         var pokemon = Program.Service.GetPokemon(pet.Name);
         var petName = string.IsNullOrEmpty(pet.PetName) ? pokemon.Name : pet.PetName;
 
-        AnsiConsole.WriteLine("Pokemon Pocket");
+        AnsiConsole.WriteLine("Pokémon Pocket");
         AnsiConsole.WriteLine();
         AnsiConsole.MarkupLineInterpolated($"You are about to rename [bold yellow]{petName}[/]!");
         AnsiConsole.WriteLine();
@@ -394,7 +408,8 @@ public static class EnhancedMenu
 
         AnsiConsole.WriteLine("Pokémon Pocket");
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLineInterpolated($"You are about to heal [yellow]{name}[/] from [red]{pet.Health}[/] to [green]{outputHealth}[/]!");
+        AnsiConsole.MarkupLineInterpolated(
+            $"You are about to heal [yellow]{name}[/] from [red]{pet.Health}[/] to [green]{outputHealth}[/]!");
         AnsiConsole.MarkupLineInterpolated($"This will consume [red]{healthIncreasable}[/] experience points.");
         AnsiConsole.WriteLine();
 
@@ -454,10 +469,13 @@ public static class EnhancedMenu
             var from = master.Name;
             var to = master.EvolveTo;
 
-            var fromNumber = petGroups.Contains(from) ? petGroups[from].Count().ToString() : "0";
-            var requiredAmount = master.NoToEvolve.ToString();
-            var amount = $"{fromNumber}/{requiredAmount}";
+            var fromNumber = petGroups.Contains(from) ? petGroups[from].Count() : 0;
+            var requiredAmount = master.NoToEvolve;
 
+            if (fromNumber <= 0)
+                continue;
+
+            var amount = $"{fromNumber}/{requiredAmount}";
             var evolvable = "[red]No[/]";
 
             if (master.CanEvolve(pets))

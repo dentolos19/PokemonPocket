@@ -60,7 +60,7 @@ public class ProgramService
 
     public Pokemon[] GetAllPets()
     {
-        return _context.Pets.ToArray();
+        return _context.Pets.OrderBy(pet => pet.Name).ToArray();
     }
 
     public Pokemon[] GetPokemonPets(string pokemonName)
