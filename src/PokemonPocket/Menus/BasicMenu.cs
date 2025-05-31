@@ -140,64 +140,88 @@ public static class BasicMenu
     {
         var pets = Program.Service.GetAllPets().OrderByDescending(pokemon => pokemon.Experience);
 
-        if (!pets.Any())
+        if (pets.Any())
+        {
+            foreach (var pet in pets)
+            {
+                Console.WriteLine($"Name: {pet.Name}");
+                Console.WriteLine($"Health: {pet.MaxHealth}");
+                Console.WriteLine($"Experience: {pet.Experience}");
+                Console.WriteLine($"Skill: {pet.SkillName}");
+                Console.WriteLine("-----------------------");
+            }
+        }
+        else
         {
             Console.WriteLine("No pokemons found in your pocket.");
-            return;
         }
 
-        foreach (var pet in pets)
-        {
-            Console.WriteLine($"Name: {pet.Name}");
-            Console.WriteLine($"Health: {pet.MaxHealth}");
-            Console.WriteLine($"Experience: {pet.Experience}");
-            Console.WriteLine($"Skill: {pet.SkillName}");
-            Console.WriteLine("-----------------------");
-        }
+        Console.ReadKey();
     }
 
     private static void CheckEvolvable()
     {
         var pets = Program.Service.GetAllPets();
         var masters = Program.Service.GetAllMasters();
+        var evolvableCount = 0;
 
         foreach (var master in masters)
         {
-            var amount = master.GetEvolvableAmount(pets);
-            if (amount <= 0)
+            if (!master.CanEvolve(pets))
                 continue;
 
-            Console.WriteLine($"{master.NoToEvolve * amount} {master.Name} --> {amount} {master.EvolveTo}");
+            var petCount = pets.Where(pet => pet.Name == master.Name).Count();
+            var evolutionMultiple = petCount >= master.NoToEvolve
+                ? (int)Math.Floor((double)(petCount / master.NoToEvolve))
+                : 0;
+
+            Console.WriteLine(
+                $"{master.NoToEvolve * evolutionMultiple} {master.Name} --> {evolutionMultiple} {master.EvolveTo}");
+
+            evolvableCount++;
         }
+
+        if (evolvableCount == 0)
+        {
+            Console.WriteLine("No pokemons are eligible for evolution.");
+        }
+        else
+        {
+            Console.WriteLine();
+            Console.WriteLine($"Total evolvable pokemons: {evolvableCount}");
+        }
+
+        Console.ReadKey();
     }
 
     private static void EvolveAll()
     {
-        var pets = Program.Service.GetAllPets();
         var masters = Program.Service.GetAllMasters();
 
         foreach (var master in masters)
         {
-            var amount = master.GetEvolvableAmount(pets);
-            if (amount <= 0)
+            var pets = Program.Service.GetAllPets();
+
+            if (!master.CanEvolve(pets))
                 continue;
 
-            for (var index = 0; index < amount; index++)
+            for (var index = 0; index < master.NoToEvolve; index++)
             {
                 var pet = pets.FirstOrDefault(pokemon => pokemon.Name == master.Name);
+                if (pet is null)
+                    continue;
+
                 Program.Service.RemovePet(pet);
             }
 
             var evolvedPokemon = Program.Service.GetPokemon(master.EvolveTo);
-            var evolvedPet = new Pokemon();
-
-            evolvedPet.EvolveTo(evolvedPokemon);
-            evolvedPet.Health = 100;
-            evolvedPet.Experience = 0;
+            var evolvedPet = evolvedPokemon.SpawnPet();
 
             Program.Service.AddPet(evolvedPet);
         }
 
         Console.WriteLine("Evolved all eligible pokemons.");
+
+        Console.ReadKey();
     }
 }
