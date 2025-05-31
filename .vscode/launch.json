@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/PokemonPocket/bin/Debug/net9.0/PokemonPocket.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/PokemonPocket",
+      "console": "externalTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "Attach",
+      "type": "coreclr",
+      "request": "attach"
+    }
+  ]
+}
