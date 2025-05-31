@@ -86,6 +86,8 @@ public static class BasicMenu
             name = nameCandidate;
         }
 
+        var species = Program.Service.GetSpecies(name);
+
         while (health == null)
         {
             Console.Write("Enter Pokemon's Health: ");
@@ -100,6 +102,12 @@ public static class BasicMenu
             if (healthValue <= 0)
             {
                 Console.WriteLine("Health must be greater than 0. Please try again.");
+                continue;
+            }
+
+            if (healthValue > species.MaxHealth)
+            {
+                Console.WriteLine($"Health must be less than or equal to {Program.Service.GetSpecies(name).MaxHealth}. Please try again.");
                 continue;
             }
 
@@ -126,23 +134,17 @@ public static class BasicMenu
             experience = experienceValue;
         }
 
-        var pokemon = Program.Service.GetSpecies(name);
-        var pet = new Pokemon();
-
-        pet.EvolveTo(pokemon);
-        pet.Health = health.Value;
-        pet.Experience = experience.Value;
-
-        Program.Service.AddPokemon(pet);
+        var pokemon = species.SpawnPokemon(null, health.Value, experience.Value);
+        Program.Service.AddPokemon(pokemon);
     }
 
     private static void ListPokemons()
     {
-        var pets = Program.Service.GetAllPokemons().OrderByDescending(pokemon => pokemon.Experience);
+        var pokemons = Program.Service.GetAllPokemons().OrderByDescending(pokemon => pokemon.Experience).ToList();
 
-        if (pets.Any())
+        if (pokemons.Any())
         {
-            foreach (var pet in pets)
+            foreach (var pet in pokemons)
             {
                 Console.WriteLine($"Name: {pet.Name}");
                 Console.WriteLine($"Health: {pet.MaxHealth}");
@@ -161,34 +163,31 @@ public static class BasicMenu
 
     private static void CheckEvolvable()
     {
-        var pets = Program.Service.GetAllPokemons();
+        var pokemons = Program.Service.GetAllPokemons();
         var masters = Program.Service.GetAllMasters();
-        var evolvableCount = 0;
+        var count = 0;
 
         foreach (var master in masters)
         {
-            if (!master.CanEvolve(pets))
+            if (!master.CanEvolve(pokemons))
                 continue;
 
-            var petCount = pets.Where(pet => pet.Name == master.Name).Count();
-            var evolutionMultiple = petCount >= master.NoToEvolve
-                ? (int)Math.Floor((double)(petCount / master.NoToEvolve))
-                : 0;
+            var petCount = pokemons.Where(pet => pet.Name == master.Name).Count();
+            var evolutionMultiple = petCount >= master.NoToEvolve ? petCount / master.NoToEvolve : 0;
 
-            Console.WriteLine(
-                $"{master.NoToEvolve * evolutionMultiple} {master.Name} --> {evolutionMultiple} {master.EvolveTo}");
+            Console.WriteLine($"{master.NoToEvolve * evolutionMultiple} {master.Name} --> {evolutionMultiple} {master.EvolveTo}");
 
-            evolvableCount++;
+            count++;
         }
 
-        if (evolvableCount == 0)
+        if (count == 0)
         {
             Console.WriteLine("No pokemons are eligible for evolution.");
         }
         else
         {
             Console.WriteLine();
-            Console.WriteLine($"Total evolvable pokemons: {evolvableCount}");
+            Console.WriteLine($"Total evolvable pokemons: {count}");
         }
 
         Console.ReadKey();
@@ -197,6 +196,7 @@ public static class BasicMenu
     private static void EvolveAll()
     {
         var masters = Program.Service.GetAllMasters();
+
         foreach (var master in masters)
         {
             // Refresh pets list for each master to get current state
@@ -217,10 +217,9 @@ public static class BasicMenu
             // Remove all pets in a single batch operation
             Program.Service.RemovePokemons(petsToEvolve);
 
-            var evolvedPokemon = Program.Service.GetSpecies(master.EvolveTo);
-            var evolvedPet = evolvedPokemon.SpawnPokemon();
-
-            Program.Service.AddPokemon(evolvedPet);
+            var evolvedSpecies = Program.Service.GetSpecies(master.EvolveTo);
+            var evolvedPokemon = evolvedSpecies.SpawnPokemon();
+            Program.Service.AddPokemon(evolvedPokemon);
         }
 
         Console.WriteLine("Evolved all eligible pokemons.");

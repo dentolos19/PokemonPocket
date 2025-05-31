@@ -2,7 +2,6 @@
 // 231292A
 
 using System.Reflection;
-using Microsoft.EntityFrameworkCore;
 using PokemonPocket.Models;
 using PokemonPocket.Species;
 
@@ -39,12 +38,11 @@ public class ProgramService
 
         // Load Available Species
         var types = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.IsSubclassOf(typeof(Pokemon)));
-        var species = types.Select(type => (Pokemon)Activator.CreateInstance(type)!);
+        var species = types.Select(type => Activator.CreateInstance(type) as Pokemon).Where(pokemon => pokemon != null).Cast<Pokemon>();
         _species = species.ToList();
 
         // Ensure the database is created and migrated
         _context.Database.EnsureCreated();
-        _context.Database.Migrate();
     }
 
     public void SaveChanges()

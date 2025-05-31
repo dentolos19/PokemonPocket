@@ -3,7 +3,6 @@
 
 using PokemonPocket.Helpers;
 using PokemonPocket.Menus;
-using PokemonPocket.Models;
 using Spectre.Console;
 
 namespace PokemonPocket;

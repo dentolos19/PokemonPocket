@@ -278,6 +278,7 @@ public static class EnhancedMenu
         table.AddColumn("Name");
         table.AddColumn("Health");
         table.AddColumn("Experience");
+        table.AddColumn("Skill");
         table.Expand();
 
         var pokemons = Program.Service.GetAllPokemons();
@@ -288,6 +289,7 @@ public static class EnhancedMenu
             var pokemonName = pokemon.PetName ?? "[dim]No nickname specified.[/]";
             var health = $"{pokemon.Health}/{pokemon.MaxHealth}";
             var experience = pokemon.Experience;
+            var skill = pokemon.SkillName;
 
             if (pokemon.Health >= pokemon.MaxHealth - 10)
                 health = $"[green]{health}[/]";
@@ -296,7 +298,7 @@ public static class EnhancedMenu
             else
                 health = $"[yellow]{health}[/]";
 
-            table.AddRow(speciesName, pokemonName, health, experience.ToString());
+            table.AddRow(speciesName, pokemonName, health, experience.ToString(), skill);
         }
 
         AnsiConsole.Write(table);
@@ -577,7 +579,7 @@ public static class EnhancedMenu
 
         var prompt = new MultiSelectionPrompt<Selection>()
             .AddChoices(choices)
-            .InstructionsText($"Please select exactly or multiples of {master.NoToEvolve} pokemon(s) from your pocket.");
+            .InstructionsText($"[dim]Please select exactly or multiples of {master.NoToEvolve} pokemon(s) from your pocket.[/]");
 
         while (true)
         {
@@ -590,7 +592,7 @@ public static class EnhancedMenu
             output = pokemons.Count / master.NoToEvolve;
             break;
         }
-        
+
         AnsiConsole.Status().Start("Evolving Pokemon...", context =>
         {
             Thread.Sleep(2000);
@@ -603,7 +605,7 @@ public static class EnhancedMenu
         });
 
         Program.Service.RemovePokemons(sacrifices);
-        
+
         var pokemon = evolution.SpawnPokemon();
         Program.Service.AddPokemon(pokemon);
     }

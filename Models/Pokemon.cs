@@ -27,7 +27,7 @@ public class Pokemon
     public int CalculateDamage(int damage)
     {
         var finalDamage = damage * DamageMultiplier;
-        Health -= finalDamage;
+        Health = Math.Max(0, Health - finalDamage);
 
         return finalDamage;
     }
