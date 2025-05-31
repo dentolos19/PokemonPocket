@@ -9,11 +9,8 @@ namespace PokemonPocket;
 
 internal static class Program
 {
-    private delegate void Menu();
-
-    private static Menu _menu = BasicMenu.Entry;
-
     public static ProgramService Service { get; } = new();
+    public static ProgramMode Mode { get; set; }
 
     public static void Main()
     {
@@ -27,8 +24,8 @@ internal static class Program
 
         var prompt = new SelectionPrompt<Selection>()
             .AddChoices(
-                "Basic Mode".WithAction(() => { _menu = BasicMenu.Entry; }),
-                "Enhanced Mode".WithAction(() => { _menu = EnhancedMenu.Entry; })
+                "Basic Mode".WithAction(() => { Mode = ProgramMode.Basic; }),
+                "Enhanced Mode".WithAction(() => { Mode = ProgramMode.Enhanced; })
             );
 
         var result = AnsiConsole.Prompt(prompt).ToAction();
@@ -37,19 +34,19 @@ internal static class Program
         while (true)
         {
             AnsiConsole.Clear();
-            _menu.Invoke();
+            if (Mode == ProgramMode.Basic)
+            {
+                BasicMenu.Entry();
+            }
+            else
+            {
+                EnhancedMenu.Entry();
+            }
         }
     }
 
     public static void ToggleMenu()
     {
-        if (_menu == BasicMenu.Entry)
-        {
-            _menu = EnhancedMenu.Entry;
-        }
-        else
-        {
-            _menu = BasicMenu.Entry;
-        }
+        Mode = Mode == ProgramMode.Basic ? ProgramMode.Enhanced : ProgramMode.Basic;
     }
 }

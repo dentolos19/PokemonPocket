@@ -117,31 +117,33 @@ public static class EnhancedMenu
         {
             AnsiConsole.Clear();
 
+            var draftHealthBar = new BarChartItem(draftName, draftHealth, Color.Green);
             var wildHealthBar = new BarChartItem(wildName, wildHealth, Color.Red);
-            var petHealthBar = new BarChartItem(draftName, draftHealth, Color.Green);
 
             // Render health bars
             var chart = new BarChart()
                 .Width(50)
-                .WithMaxValue(100)
-                .AddItem(wildHealthBar)
-                .AddItem(petHealthBar);
+                .WithMaxValue(Math.Max(draft.MaxHealth, wild.MaxHealth))
+                .AddItem(draftHealthBar)
+                .AddItem(wildHealthBar);
 
             AnsiConsole.Write(title);
             AnsiConsole.Write(subtitle);
             AnsiConsole.WriteLine();
+
             AnsiConsole.Write(chart);
             AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLineInterpolated($"[green]{draftName}[/] HP: {draftHealth}");
-            AnsiConsole.MarkupLineInterpolated($"[red]{wildName}[/] HP: {wildHealth}");
-            AnsiConsole.WriteLine();
+
+            // AnsiConsole.MarkupLineInterpolated($"[green]{draftName}[/] HP: {draftHealth}");
+            // AnsiConsole.MarkupLineInterpolated($"[red]{wildName}[/] HP: {wildHealth}");
+            // AnsiConsole.WriteLine();
 
             // If both are defeated...
             if (draftHealth <= 0 && wildHealth <= 0)
             {
                 var gainedExperience = Random.Shared.Next(10, 30);
 
-                AnsiConsole.MarkupLineInterpolated($"Both have fainted!");
+                AnsiConsole.MarkupLineInterpolated($"Both have fainted! You've failed to catch [red]{wildName}[/]!");
                 AnsiConsole.MarkupLineInterpolated($"However, [green]{draftName}[/] has gained [yellow]{gainedExperience}[/] experience!");
                 AnsiConsole.WriteLine();
 
@@ -158,7 +160,7 @@ public static class EnhancedMenu
             {
                 var gainedExperience = Random.Shared.Next(10, 30);
 
-                AnsiConsole.MarkupLineInterpolated($"[green]{draftName}[/] has fainted!");
+                AnsiConsole.MarkupLineInterpolated($"[green]{draftName}[/] has fainted! You failed to catch [red]{wildName}[/]!");
                 AnsiConsole.MarkupLineInterpolated($"However, [green]{draftName}[/] has gained [yellow]{gainedExperience}[/] experience!");
                 AnsiConsole.WriteLine();
 
@@ -198,11 +200,11 @@ public static class EnhancedMenu
                         var draftDamage = draft.CalculateDamage(wild.DealDamage());
                         var wildDamage = wild.CalculateDamage(draft.DealDamage());
 
-                        AnsiConsole.MarkupLineInterpolated($"[green]{draftName}[/] have dealt [yellow]{draftDamage}[/] damage to [red]{wildName}[/]!");
+                        AnsiConsole.MarkupLineInterpolated($"[green]{draftName}[/] used [cyan]{draft.SkillName}[/] to deal [yellow]{draftDamage}[/] damage to [red]{wildName}[/]!");
                         Thread.Sleep(1000);
                         wildHealth -= draftDamage;
 
-                        AnsiConsole.MarkupLineInterpolated($"[red]{wildName}[/] has dealt [yellow]{wildDamage}[/] damage to [green]{draftName}[/]!");
+                        AnsiConsole.MarkupLineInterpolated($"[red]{wildName}[/] used [cyan]{wild.SkillName}[/] to deal [yellow]{wildDamage}[/] damage to [green]{draftName}[/]!");
                         Thread.Sleep(2000);
                         draftHealth -= wildDamage;
                     }),
@@ -286,7 +288,7 @@ public static class EnhancedMenu
 
         foreach (var pokemon in pokemons)
         {
-            var speciesName = pokemon.Name;
+            var speciesName = $"[cyan]{pokemon.Name}[/]";
             var pokemonName = pokemon.PetName ?? "[dim]No nickname specified.[/]";
             var health = $"{pokemon.Health}/{pokemon.MaxHealth}";
             var experience = pokemon.Experience;
@@ -498,10 +500,10 @@ public static class EnhancedMenu
 
         foreach (var master in masters)
         {
-            var fromSpecies = $"[yellow]{master.Name}[/]";
-            var toSpecies = $"[green]{master.EvolveTo}[/]";
+            var fromSpecies = $"[cyan]{master.Name}[/]";
+            var toSpecies = $"[yellow]{master.EvolveTo}[/]";
 
-            var currentCount = groups.Contains(fromSpecies) ? groups[fromSpecies].Count() : 0;
+            var currentCount = groups.Contains(master.Name) ? groups[master.Name].Count() : 0;
             var requiredCount = master.NoToEvolve;
 
             if (currentCount <= 0)
@@ -673,7 +675,6 @@ public static class EnhancedMenu
 
             // Add the first species (base form)
             chainDisplay.Add($"[cyan]{chainStart}[/]");
-            requirementDisplay.Add("-");
 
             // Add each evolution step
             foreach (var master in chainMasters)

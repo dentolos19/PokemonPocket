@@ -26,9 +26,21 @@ public class Pokemon
 
     public int CalculateDamage(int damage)
     {
-        var finalDamage = damage * DamageMultiplier;
-        Health = Math.Max(0, Health - finalDamage);
+        int finalDamage;
 
+        if (Program.Mode == ProgramMode.Basic)
+        {
+            // As per assignment requirement
+            finalDamage = damage * DamageMultiplier;
+        }
+        else
+        {
+            // Apply a random multiplier between 0.5 and 1.5
+            var randomMultiplier = new Random().NextDouble() * (1.5 - 0.5) + 0.5;
+            finalDamage = (int)(damage * DamageMultiplier * randomMultiplier);
+        }
+
+        Health = Math.Max(0, Health - finalDamage);
         return finalDamage;
     }
 
