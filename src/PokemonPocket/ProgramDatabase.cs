@@ -10,8 +10,7 @@ public class ProgramDatabase : DbContext
 {
     private readonly string _databasePath;
 
-    public DbSet<Pokemon> Pets { get; set; }
-
+    public DbSet<Pokemon> Pokemons { get; init; }
 
     public ProgramDatabase()
     {

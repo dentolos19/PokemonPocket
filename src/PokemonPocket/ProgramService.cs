@@ -11,7 +11,7 @@ namespace PokemonPocket;
 public class ProgramService
 {
     private readonly ProgramDatabase _context;
-    private readonly List<Pokemon> _pokemons;
+    private readonly List<Pokemon> _species;
     private readonly List<PokemonMaster> _masters;
 
     public ProgramService()
@@ -37,10 +37,10 @@ public class ProgramService
             new(nameof(Magikarp), 5, nameof(Gyarados))
         };
 
-        // Load Available Pokemons
+        // Load Available Species
         var types = Assembly.GetExecutingAssembly().GetTypes().Where(type => type.IsSubclassOf(typeof(Pokemon)));
-        var pokemons = types.Select(type => (Pokemon)Activator.CreateInstance(type)!);
-        _pokemons = pokemons.ToList();
+        var species = types.Select(type => (Pokemon)Activator.CreateInstance(type)!);
+        _species = species.ToList();
 
         // Ensure the database is created and migrated
         _context.Database.EnsureCreated();
@@ -52,45 +52,45 @@ public class ProgramService
         _context.SaveChanges();
     }
 
-    public void AddPet(Pokemon pokemon)
+    public void AddPokemon(Pokemon pokemon)
     {
-        _context.Pets.Add(pokemon);
+        _context.Pokemons.Add(pokemon);
         SaveChanges();
     }
 
-    public Pokemon[] GetAllPets()
+    public Pokemon[] GetAllPokemons()
     {
-        return _context.Pets.OrderBy(pet => pet.Name).ToArray();
+        return _context.Pokemons.OrderBy(pet => pet.Name).ToArray();
     }
 
-    public Pokemon[] GetPokemonPets(string pokemonName)
+    public Pokemon[] GetPokemonsBySpecies(string speciesName)
     {
-        return _context.Pets.Where(pet => pet.Name.Equals(pokemonName)).ToArray();
+        return _context.Pokemons.Where(pet => pet.Name.Equals(speciesName)).ToArray();
     }
 
-    public void RemovePet(Pokemon pokemon)
+    public void RemovePokemon(Pokemon pokemon)
     {
         // Ensure the entity is being tracked by the context
-        var trackedPet = _context.Pets.Local.FirstOrDefault(localPokemon => localPokemon.Id == pokemon.Id);
+        var trackedPet = _context.Pokemons.Local.FirstOrDefault(localPokemon => localPokemon.Id == pokemon.Id);
 
         if (trackedPet != null)
         {
-            _context.Pets.Remove(trackedPet);
+            _context.Pokemons.Remove(trackedPet);
         }
         else
         {
             // If not tracked, attach it first, then remove
-            var removablePet = _context.Pets.Find(pokemon.Id);
+            var removablePet = _context.Pokemons.Find(pokemon.Id);
             if (removablePet != null)
             {
-                _context.Pets.Remove(removablePet);
+                _context.Pokemons.Remove(removablePet);
             }
         }
 
         SaveChanges();
     }
 
-    public void RemovePets(IEnumerable<Pokemon> pokemons)
+    public void RemovePokemons(IEnumerable<Pokemon> pokemons)
     {
         using var transaction = _context.Database.BeginTransaction();
 
@@ -98,18 +98,19 @@ public class ProgramService
         {
             foreach (var pokemon in pokemons.ToList())
             {
-                var trackedPet = _context.Pets.Local.FirstOrDefault(localPokemon => localPokemon.Id == pokemon.Id);
+                var trackedPet = _context.Pokemons.Local.FirstOrDefault(localPokemon => localPokemon.Id == pokemon.Id);
+
                 if (trackedPet != null)
                 {
-                    _context.Pets.Remove(trackedPet);
+                    _context.Pokemons.Remove(trackedPet);
                 }
                 else
                 {
                     // If not tracked, attach it first, then remove
-                    var removableEntity = _context.Pets.Find(pokemon.Id);
+                    var removableEntity = _context.Pokemons.Find(pokemon.Id);
                     if (removableEntity != null)
                     {
-                        _context.Pets.Remove(removableEntity);
+                        _context.Pokemons.Remove(removableEntity);
                     }
                 }
             }
@@ -124,28 +125,23 @@ public class ProgramService
         }
     }
 
-    public bool CheckPokemonExists(string name)
+    public bool CheckSpeciesExists(string name)
     {
-        return _pokemons.Any(pokemon => pokemon.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        return _species.Any(pokemon => pokemon.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
     }
 
-    public Pokemon? GetPokemon(string name)
+    public Pokemon? GetSpecies(string name)
     {
-        return _pokemons.FirstOrDefault(pokemon => pokemon.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        return _species.FirstOrDefault(pokemon => pokemon.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
     }
 
-    public Pokemon[] GetAllPokemons()
+    public Pokemon[] GetAllSpecies()
     {
-        return _pokemons.ToArray();
+        return _species.ToArray();
     }
 
     public PokemonMaster[] GetAllMasters()
     {
         return _masters.OrderBy(master => master.Name).ToArray();
-    }
-
-    public PokemonMaster? GetMaster(string name)
-    {
-        return _masters.FirstOrDefault(master => master.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
     }
 }

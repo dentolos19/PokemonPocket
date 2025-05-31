@@ -11,19 +11,23 @@ public static class EnhancedMenu
 {
     public static void Entry()
     {
-        var figlet = new FigletText("Pokémon Pocket");
-        AnsiConsole.Write(figlet);
+        var title = new FigletText("Pokémon Pocket").Color(Color.Yellow).Centered();
+        var subtitle = new Rule("Welcome to your Pocket Adventure!").RuleStyle(new Style(Color.Green));
+
+        AnsiConsole.Write(title);
+        AnsiConsole.Write(subtitle);
+        AnsiConsole.WriteLine();
 
         var prompt = new SelectionPrompt<Selection>()
             .AddChoiceGroup(
-                "Actions".AsLabel(),
+                "My Adventure".AsLabel(),
                 "Catch A Pokémon".WithAction(CatchPokemon_Wilding),
                 "Add A Pokémon".WithAction(AddPokemon_SelectPokemon),
                 "View My Pokémons".WithAction(ViewPokemons_ListPokemons),
                 "Evolve My Pokémons".WithAction(EvolvePokemon_ListEvolvables)
             )
             .AddChoiceGroup(
-                "Pocket".AsLabel(),
+                "My Pocket".AsLabel(),
                 "Switch To Basic Menu".WithAction(() => { Program.ToggleMenu(); }),
                 "Exit My Pocket".WithAction(() => { Environment.Exit(0); })
             );
@@ -36,19 +40,24 @@ public static class EnhancedMenu
     {
         AnsiConsole.Clear();
 
-        var availablePokemons = Program.Service.GetAllPokemons();
-        var randomPokemon = availablePokemons.OrderBy(_ => Guid.NewGuid()).First().SpawnPet();
+        var title = new FigletText("Pokémon Pocket").Color(Color.Yellow).Centered();
+        var subtitle = new Rule("Battle Preparation!").RuleStyle(new Style(Color.Orange1));
 
-        AnsiConsole.MarkupLineInterpolated($"A wild [yellow bold]{randomPokemon.Name}[/] has been spotted!");
+        AnsiConsole.Write(title);
+        AnsiConsole.Write(subtitle);
+        AnsiConsole.WriteLine();
+
+        var availableSpecies = Program.Service.GetAllSpecies();
+        var randomSpecies = availableSpecies.OrderBy(_ => Guid.NewGuid()).First().SpawnPokemon();
+
+        AnsiConsole.MarkupLineInterpolated($"A wild [yellow]{randomSpecies.Name}[/] has been spotted!");
         AnsiConsole.WriteLine();
 
         var prompt = new SelectionPrompt<Selection>()
-            .AddChoiceGroup(
-                "Actions".AsLabel(),
-                "Target Pokemon".WithAction(() => CatchPokemon_Draft(randomPokemon)),
-                "Move On".WithAction(CatchPokemon_Wilding)
-            ).AddChoices(
-                "Back To Base".WithEmptyAction()
+            .AddChoices(
+                "Target Pokemon".WithAction(() => CatchPokemon_Draft(randomSpecies)),
+                "Move On".WithAction(CatchPokemon_Wilding),
+                "Back".WithEmptyAction()
             );
 
         var result = AnsiConsole.Prompt(prompt).ToAction();
@@ -57,27 +66,26 @@ public static class EnhancedMenu
 
     private static void CatchPokemon_Draft(Pokemon wild)
     {
-        var pets = Program.Service.GetAllPets();
-        var groups = pets.ToLookup(pet => pet.Name, pet => pet);
+        var pokemons = Program.Service.GetAllPokemons();
+        var groups = pokemons.ToLookup(pet => pet.Name, pet => pet);
 
         var prompt = new SelectionPrompt<Selection>()
-            .PageSize(100)
+            .PageSize(30)
             .EnableSearch();
 
         foreach (var group in groups)
         {
-            var availablePets = group.Where(pet => pet.Health > 0).ToArray();
-            if (availablePets.Length <= 0)
+            var groupPokemons = group.Where(pet => pet.Health > 0).ToArray();
+            if (groupPokemons.Length <= 0)
                 continue;
 
-            var choices = availablePets.Select(draft =>
+            var choices = groupPokemons.Select(draft =>
             {
-                var name = string.IsNullOrEmpty(draft.PetName) ? draft.Name : draft.PetName;
+                var name = draft.GetName();
                 var health = draft.Health;
                 var experience = draft.Experience;
 
-                return $"{name} (Health: {health}, Experience: {experience})"
-                    .WithAction(() => CatchPokemon_Catch(wild, draft));
+                return $"{name} (Health: {health}, Experience: {experience})".WithAction(() => CatchPokemon_Catch(wild, draft));
             });
 
             prompt.AddChoiceGroup(group.Key.AsLabel(), choices);
@@ -91,15 +99,20 @@ public static class EnhancedMenu
 
     private static void CatchPokemon_Catch(Pokemon wild, Pokemon draft)
     {
+        var title = new FigletText("Pokémon Pocket").Color(Color.Yellow).Centered();
+        var subtitle = new Rule("Battle Mode!").RuleStyle(new Style(Color.Red));
+
         // Declare the wild's and draft's names
         var wildName = wild.Name;
-        var draftName = string.IsNullOrEmpty(draft.PetName) ? draft.Name : draft.PetName;
+        var draftName = draft.GetName();
 
         // Declare the wild's and draft's entities
         var wildHealth = wild.Health;
         var draftHealth = draft.Health;
 
-        while (true)
+        var playing = true;
+
+        while (playing)
         {
             AnsiConsole.Clear();
 
@@ -113,12 +126,13 @@ public static class EnhancedMenu
                 .AddItem(wildHealthBar)
                 .AddItem(petHealthBar);
 
-            AnsiConsole.WriteLine("Battle!");
+            AnsiConsole.Write(title);
+            AnsiConsole.Write(subtitle);
             AnsiConsole.WriteLine();
             AnsiConsole.Write(chart);
             AnsiConsole.WriteLine();
-            AnsiConsole.MarkupLineInterpolated($"[bold red]{wildName}[/] HP: {wildHealth}");
-            AnsiConsole.MarkupLineInterpolated($"[bold green]{draftName}[/] HP: {draftHealth}");
+            AnsiConsole.MarkupLineInterpolated($"[green]{draftName}[/] HP: {draftHealth}");
+            AnsiConsole.MarkupLineInterpolated($"[red]{wildName}[/] HP: {wildHealth}");
             AnsiConsole.WriteLine();
 
             // If both are defeated...
@@ -127,10 +141,7 @@ public static class EnhancedMenu
                 var gainedExperience = Random.Shared.Next(10, 30);
 
                 AnsiConsole.MarkupLineInterpolated($"Both have fainted!");
-                AnsiConsole.MarkupLineInterpolated(
-                    $"However, [green]{draftName}[/] has gained [green]{gainedExperience}[/] experience!"
-                );
-
+                AnsiConsole.MarkupLineInterpolated($"However, [green]{draftName}[/] has gained [yellow]{gainedExperience}[/] experience!");
                 AnsiConsole.WriteLine();
 
                 draft.Health = 0;
@@ -147,10 +158,7 @@ public static class EnhancedMenu
                 var gainedExperience = Random.Shared.Next(10, 30);
 
                 AnsiConsole.MarkupLineInterpolated($"[green]{draftName}[/] has fainted!");
-                AnsiConsole.MarkupLineInterpolated(
-                    $"However, [green]{draftName}[/] has gained [green]{gainedExperience}[/] experience!"
-                );
-
+                AnsiConsole.MarkupLineInterpolated($"However, [green]{draftName}[/] has gained [yellow]{gainedExperience}[/] experience!");
                 AnsiConsole.WriteLine();
 
                 draft.Health = 0;
@@ -167,136 +175,128 @@ public static class EnhancedMenu
                 var gainedExperience = Random.Shared.Next(20, 50);
 
                 AnsiConsole.MarkupLineInterpolated($"You have caught [bold red]{wildName}[/]!");
-                AnsiConsole.MarkupLineInterpolated(
-                    $"[green]{draftName}[/] has gained [green]{gainedExperience}[/] experience!"
-                );
+                AnsiConsole.MarkupLineInterpolated($"[green]{draftName}[/] has gained [yellow]{gainedExperience}[/] experience!");
 
                 AnsiConsole.WriteLine();
 
                 draft.Health = draftHealth;
                 draft.Experience += gainedExperience;
 
-                var pet = wild.SpawnPet();
-                Program.Service.AddPet(pet);
+                var pokemon = wild.SpawnPokemon();
+                Program.Service.AddPokemon(pokemon);
                 Program.Service.SaveChanges();
 
                 Console.ReadKey();
                 break;
             }
 
-            var wildDamage = 0;
-            var petDamage = 0;
-
             var prompt = new SelectionPrompt<Selection>()
-                .AddChoiceGroup(
-                    "Actions".AsLabel(),
+                .AddChoices(
                     "Attack".WithAction(() =>
                     {
-                        wildDamage = wild.CalculateDamage(draft.DealDamage());
-                        petDamage = draft.CalculateDamage(wild.DealDamage());
+                        var draftDamage = draft.CalculateDamage(wild.DealDamage());
+                        var wildDamage = wild.CalculateDamage(draft.DealDamage());
+
+                        AnsiConsole.MarkupLineInterpolated($"[green]{draftName}[/] have dealt [yellow]{draftDamage}[/] damage to [red]{wildName}[/]!");
+                        Thread.Sleep(1000);
+                        wildHealth -= draftDamage;
+
+                        AnsiConsole.MarkupLineInterpolated($"[red]{wildName}[/] has dealt [yellow]{wildDamage}[/] damage to [green]{draftName}[/]!");
+                        Thread.Sleep(2000);
+                        draftHealth -= wildDamage;
+                    }),
+                    "Retreat".WithAction(() =>
+                    {
+                        playing = false;
                     })
                 );
 
             var result = AnsiConsole.Prompt(prompt).ToAction();
             result.Invoke();
-
-            AnsiConsole.MarkupLineInterpolated(
-                $"[bold green]{draftName}[/] have dealt [bold green]{petDamage}[/] damage to [bold red]{wildName}[/]!"
-            );
-
-            Thread.Sleep(1000);
-            wildHealth -= petDamage;
-
-            AnsiConsole.MarkupLineInterpolated(
-                $"[bold red]{wildName}[/] has dealt [bold green]{wildDamage}[/] damage to [bold green]{draftName}[/]!"
-            );
-
-            Thread.Sleep(2000);
-            draftHealth -= wildDamage;
         }
     }
 
     private static void AddPokemon_SelectPokemon()
     {
-        var pokemons = Program.Service.GetAllPokemons();
+        var pokemons = Program.Service.GetAllSpecies();
         var choices = pokemons.Select(pokemon => pokemon.Name.WithAction(() => AddPokemon_SetDetails(pokemon.Name)));
 
         var prompt = new SelectionPrompt<Selection>()
             .PageSize(100)
             .EnableSearch()
             .AddChoiceGroup(
-                "Available Pokemons".AsLabel(),
+                "Available Species".AsLabel(),
                 choices.ToArray()
             ).AddChoices(
-                "Back To Menu".WithEmptyAction()
+                "Back".WithEmptyAction()
             );
 
         var result = AnsiConsole.Prompt(prompt).ToAction();
         result.Invoke();
     }
 
-    private static void AddPokemon_SetDetails(string pokemonName)
+    private static void AddPokemon_SetDetails(string speciesName)
     {
-        var pokemon = Program.Service.GetPokemon(pokemonName);
+        var species = Program.Service.GetSpecies(speciesName);
 
-        AnsiConsole.MarkupLineInterpolated($"You are about to add [bold yellow]{pokemon.Name}[/]!");
+        AnsiConsole.MarkupLineInterpolated($"You are about to add [bold yellow]{species.Name}[/]!");
         AnsiConsole.WriteLine();
 
         var namePrompt = new TextPrompt<string>("Enter Pokemon's Name (optional): ").AllowEmpty();
         var healthPrompt = new TextPrompt<int>("Enter Pokemon's Health: ")
-            .Validate(value =>
-                value >= 0 ? ValidationResult.Success() : ValidationResult.Error("Value must be non-negative."));
+            .Validate(value => value >= 0 ? ValidationResult.Success() : ValidationResult.Error("Value must be non-negative."))
+            .Validate(value => value > species.MaxHealth ? ValidationResult.Error($"Value must be less than or equal to {species.MaxHealth}.") : ValidationResult.Success());
         var experiencePrompt = new TextPrompt<int>("Enter Pokemon's Experience: ")
-            .Validate(value =>
-                value >= 0 ? ValidationResult.Success() : ValidationResult.Error("Value must be non-negative."));
+            .Validate(value => value >= 0 ? ValidationResult.Success() : ValidationResult.Error("Value must be non-negative."));
 
         var name = AnsiConsole.Prompt(namePrompt);
         var health = AnsiConsole.Prompt(healthPrompt);
         var experience = AnsiConsole.Prompt(experiencePrompt);
 
-        var nameValue = string.IsNullOrEmpty(name) ? null : name;
+        var pokemon = species.SpawnPokemon(string.IsNullOrEmpty(name) ? null : name, health, experience);
 
         AnsiConsole.Status().Start("Locating Pokemon...", context =>
         {
             Thread.Sleep(2000);
 
-            context.Status($"Taming {nameValue ?? pokemon.Name}...");
+            context.Status($"Taming {pokemon.GetName()}...");
             Thread.Sleep(5000);
 
             context.Status("Pokemon caught successfully!");
             Thread.Sleep(2000);
         });
 
-        var pet = pokemon.SpawnPet(nameValue, health, experience);
-        Program.Service.AddPet(pet);
+        Program.Service.AddPokemon(pokemon);
     }
 
     private static void ViewPokemons_ListPokemons()
     {
+        var title = new FigletText("Pokémon Pocket").Color(Color.Yellow).Centered();
         var table = new Table();
 
-        table.AddColumn("Pokemon Name");
-        table.AddColumn("Given Name");
+        table.AddColumn("Species");
+        table.AddColumn("Name");
         table.AddColumn("Health");
         table.AddColumn("Experience");
+        table.Expand();
 
-        var pets = Program.Service.GetAllPets();
+        var pokemons = Program.Service.GetAllPokemons();
 
-        foreach (var pet in pets)
+        foreach (var pokemon in pokemons)
         {
-            var pokemonName = pet.Name;
-            var petName = string.IsNullOrEmpty(pet.PetName) ? string.Empty : pet.PetName;
-            var health = $"{pet.Health}/{pet.MaxHealth}";
-            var experience = pet.Experience;
+            var speciesName = pokemon.Name;
+            var pokemonName = pokemon.PetName ?? "[dim]No nickname specified.[/]";
+            var health = $"{pokemon.Health}/{pokemon.MaxHealth}";
+            var experience = pokemon.Experience;
 
-            if (pet.Health >= pet.MaxHealth - 10)
+            if (pokemon.Health >= pokemon.MaxHealth - 10)
                 health = $"[green]{health}[/]";
-            else if (pet.Health <= 10)
+            else if (pokemon.Health <= 10)
                 health = $"[red]{health}[/]";
             else
                 health = $"[yellow]{health}[/]";
 
-            table.AddRow(pokemonName, petName, health, experience.ToString());
+            table.AddRow(speciesName, pokemonName, health, experience.ToString());
         }
 
         AnsiConsole.Write(table);
@@ -305,11 +305,41 @@ public static class EnhancedMenu
         var prompt = new SelectionPrompt<Selection>()
             .AddChoiceGroup(
                 "Actions".AsLabel(),
-                "Rename".WithAction(() => ViewPokemons_SelectPokemon(ViewPokemons_RenamePokemon)),
-                "Heal".WithAction(() => ViewPokemons_SelectPokemon(ViewPokemons_HealPokemon)),
-                "Release".WithAction(() => ViewPokemons_SelectPokemon(ViewPokemons_ReleasePokemon))
+                "Rename".WithAction(() =>
+                {
+                    var subtitle = new Rule("Vet Clinic!").RuleStyle(new Style(Color.Green));
+
+                    AnsiConsole.Clear();
+                    AnsiConsole.Write(title);
+                    AnsiConsole.Write(subtitle);
+                    AnsiConsole.WriteLine();
+
+                    ViewPokemons_SelectPokemon(ViewPokemons_RenamePokemon);
+                }),
+                "Heal".WithAction(() =>
+                {
+                    var subtitle = new Rule("Healing Station!").RuleStyle(new Style(Color.Green));
+
+                    AnsiConsole.Clear();
+                    AnsiConsole.Write(title);
+                    AnsiConsole.Write(subtitle);
+                    AnsiConsole.WriteLine();
+
+                    ViewPokemons_SelectPokemon(ViewPokemons_HealPokemon);
+                }),
+                "Release".WithAction(() =>
+                {
+                    var subtitle = new Rule("Release Center!").RuleStyle(new Style(Color.Green));
+
+                    AnsiConsole.Clear();
+                    AnsiConsole.Write(title);
+                    AnsiConsole.Write(subtitle);
+                    AnsiConsole.WriteLine();
+
+                    ViewPokemons_SelectPokemon(ViewPokemons_ReleasePokemon);
+                })
             ).AddChoices(
-                "Back To Menu".WithEmptyAction()
+                "Back".WithEmptyAction()
             );
 
         var result = AnsiConsole.Prompt(prompt).ToAction();
@@ -318,19 +348,16 @@ public static class EnhancedMenu
 
     public static void ViewPokemons_SelectPokemon(Action<Pokemon> callback)
     {
-        AnsiConsole.Clear();
-
-        var pets = Program.Service.GetAllPets();
-        var petGroups = pets.ToLookup(pet => pet.Name, pet => pet);
+        var pokemons = Program.Service.GetAllPokemons();
+        var groups = pokemons.ToLookup(pet => pet.Name, pet => pet);
 
         var prompt = new SelectionPrompt<Selection>()
             .PageSize(30)
             .EnableSearch();
 
-        foreach (var group in petGroups)
+        foreach (var group in groups)
         {
-            var groupName = group.Key;
-            var groupChoices = group.Select(pet =>
+            var choices = group.Select(pet =>
             {
                 var name = pet.GetName();
                 var health = $"{pet.Health}/{pet.MaxHealth}";
@@ -343,27 +370,23 @@ public static class EnhancedMenu
                 else
                     health = $"[yellow]{health}[/]";
 
-                return $"{name} (Health: {health}, Experience: {experience})"
-                    .WithAction(() => callback(pet));
+                return $"{name} (Health: {health}, Experience: {experience})".WithAction(() => callback(pet));
             });
 
-            prompt.AddChoiceGroup(groupName.AsLabel(), groupChoices);
+            prompt.AddChoiceGroup(group.Key.AsLabel(), choices);
         }
 
-        prompt.AddChoices("Back To Menu".WithEmptyAction());
+        prompt.AddChoices("Back".WithEmptyAction());
 
         var result = AnsiConsole.Prompt(prompt).ToAction();
         result.Invoke();
     }
 
-    public static void ViewPokemons_RenamePokemon(Pokemon pet)
+    public static void ViewPokemons_RenamePokemon(Pokemon pokemon)
     {
-        var pokemon = Program.Service.GetPokemon(pet.Name);
-        var petName = string.IsNullOrEmpty(pet.PetName) ? pokemon.Name : pet.PetName;
+        var name = pokemon.GetName();
 
-        AnsiConsole.WriteLine("Pokémon Pocket");
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLineInterpolated($"You are about to rename [bold yellow]{petName}[/]!");
+        AnsiConsole.MarkupLineInterpolated($"You are about to rename [bold yellow]{name}[/]!");
         AnsiConsole.WriteLine();
 
         var namePrompt = new TextPrompt<string>("Enter Pokemon's New Name: ").AllowEmpty();
@@ -373,24 +396,24 @@ public static class EnhancedMenu
         {
             Thread.Sleep(2000);
 
-            context.Status($"Renaming {petName} to {nameValue}...");
+            context.Status($"Renaming {name} to {nameValue}...");
             Thread.Sleep(5000);
 
             context.Status("Pokemon renamed successfully!");
             Thread.Sleep(2000);
         });
 
-        pet.PetName = nameValue;
+        pokemon.PetName = nameValue;
         Program.Service.SaveChanges();
     }
 
-    public static void ViewPokemons_HealPokemon(Pokemon pet)
+    public static void ViewPokemons_HealPokemon(Pokemon pokemon)
     {
-        var name = pet.GetName();
+        var name = pokemon.GetName();
 
-        var healthRequired = pet.MaxHealth - pet.Health;
-        var healthIncreasable = pet.Experience > healthRequired ? healthRequired : pet.Experience;
-        var outputHealth = pet.Health + healthIncreasable;
+        var healthRequired = pokemon.MaxHealth - pokemon.Health;
+        var healthIncreasable = pokemon.Experience > healthRequired ? healthRequired : pokemon.Experience;
+        var outputHealth = pokemon.Health + healthIncreasable;
 
         if (healthRequired <= 0)
         {
@@ -406,10 +429,7 @@ public static class EnhancedMenu
             return;
         }
 
-        AnsiConsole.WriteLine("Pokémon Pocket");
-        AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLineInterpolated(
-            $"You are about to heal [yellow]{name}[/] from [red]{pet.Health}[/] to [green]{outputHealth}[/]!");
+        AnsiConsole.MarkupLineInterpolated($"You are about to heal [yellow]{name}[/] from [red]{pokemon.Health}[/] to [green]{outputHealth}[/]!");
         AnsiConsole.MarkupLineInterpolated($"This will consume [red]{healthIncreasable}[/] experience points.");
         AnsiConsole.WriteLine();
 
@@ -421,41 +441,49 @@ public static class EnhancedMenu
         {
             Thread.Sleep(2000);
 
-            context.Status($"Healing {pet.Name}...");
+            context.Status($"Healing {pokemon.Name}...");
             Thread.Sleep(5000);
 
             context.Status("Pokemon healed successfully!");
             Thread.Sleep(2000);
         });
 
-        pet.Health = outputHealth;
-        pet.Experience -= healthIncreasable;
+        pokemon.Health = outputHealth;
+        pokemon.Experience -= healthIncreasable;
         Program.Service.SaveChanges();
     }
 
-    public static void ViewPokemons_ReleasePokemon(Pokemon pet)
+    public static void ViewPokemons_ReleasePokemon(Pokemon pokemon)
     {
+        AnsiConsole.MarkupLineInterpolated($"You are about to release [yellow]{pokemon.GetName()}[/] into the wild!");
+        AnsiConsole.MarkupLineInterpolated($"This action is [red]permanent[/] and will not be reversible.");
+        AnsiConsole.WriteLine();
+
+        var confirmation = AnsiConsole.Confirm("Do you want to proceed?");
+        if (!confirmation)
+            return;
+
         AnsiConsole.Status().Start("Releasing Pokemon...", context =>
         {
             Thread.Sleep(2000);
 
-            context.Status($"Releasing {pet.Name}...");
+            context.Status($"Releasing {pokemon.Name}...");
             Thread.Sleep(5000);
 
             context.Status("Pokemon released successfully!");
             Thread.Sleep(2000);
         });
 
-        Program.Service.RemovePet(pet);
+        Program.Service.RemovePokemon(pokemon);
     }
 
     public static void EvolvePokemon_ListEvolvables()
     {
-        var pets = Program.Service.GetAllPets();
-        var petGroups = pets.ToLookup(pet => pet.Name, pet => pet);
+        var pokemons = Program.Service.GetAllPokemons();
+        var groups = pokemons.ToLookup(pet => pet.Name, pet => pet);
 
         var masters = Program.Service.GetAllMasters();
-        var eligibleMasters = new List<PokemonMaster>();
+        var eligibles = new List<PokemonMaster>();
 
         var table = new Table();
 
@@ -463,13 +491,14 @@ public static class EnhancedMenu
         table.AddColumn("To");
         table.AddColumn("Amount");
         table.AddColumn("Evolvable?");
+        table.Expand();
 
         foreach (var master in masters)
         {
             var from = master.Name;
             var to = master.EvolveTo;
 
-            var fromNumber = petGroups.Contains(from) ? petGroups[from].Count() : 0;
+            var fromNumber = groups.Contains(from) ? groups[from].Count() : 0;
             var requiredAmount = master.NoToEvolve;
 
             if (fromNumber <= 0)
@@ -478,10 +507,10 @@ public static class EnhancedMenu
             var amount = $"{fromNumber}/{requiredAmount}";
             var evolvable = "[red]No[/]";
 
-            if (master.CanEvolve(pets))
+            if (master.CanEvolve(pokemons))
             {
                 evolvable = "[green]Yes[/]";
-                eligibleMasters.Add(master);
+                eligibles.Add(master);
             }
 
             table.AddRow(from, to, amount, evolvable);
@@ -490,16 +519,14 @@ public static class EnhancedMenu
         AnsiConsole.Write(table);
         AnsiConsole.WriteLine();
 
-        if (eligibleMasters.Count > 0)
+        if (eligibles.Count > 0)
         {
             var prompt = new SelectionPrompt<Selection>()
                 .AddChoiceGroup(
                     "Evolvable Masters".AsLabel(),
-                    eligibleMasters.Select(master =>
-                        $"{master.Name} -> {master.EvolveTo}".WithAction(() => EvolvePokemon_SelectSacrifices(master))
-                    ))
+                    eligibles.Select(master => $"{master.Name} -> {master.EvolveTo}".WithAction(() => EvolvePokemon_SelectSacrifices(master))))
                 .AddChoices(
-                    "Back To Menu".WithEmptyAction()
+                    "Back".WithEmptyAction()
                 );
 
             var result = AnsiConsole.Prompt(prompt).ToAction();
@@ -509,50 +536,61 @@ public static class EnhancedMenu
         }
         else
         {
-            AnsiConsole.MarkupLine("[gray]No evolvable pokemons found.[/]");
+            AnsiConsole.MarkupLine("[dim]No evolvable pokemons found.[/]");
             Console.ReadKey(true);
         }
     }
 
     public static void EvolvePokemon_SelectSacrifices(PokemonMaster master)
     {
-        var candidates = Program.Service.GetPokemonPets(master.Name);
-        var evolution = Program.Service.GetPokemon(master.EvolveTo);
+        var title = new FigletText("Pokémon Pocket").Color(Color.Yellow).Centered();
+        var subtitle = new Rule("Evolution Center!").RuleStyle(new Style(Color.Green));
+
+        var candidates = Program.Service.GetPokemonsBySpecies(master.Name);
+        var evolution = Program.Service.GetSpecies(master.EvolveTo);
         var sacrifices = new List<Pokemon>();
         var output = 0;
 
         var choices = candidates.Select(pokemon =>
         {
             var name = pokemon.PetName ?? pokemon.Name;
-            var health = pokemon.Health;
+            var health = $"{pokemon.Health}/{pokemon.MaxHealth}";
             var experience = pokemon.Experience;
+
+            if (pokemon.Health >= pokemon.MaxHealth - 10)
+                health = $"[green]{health}[/]";
+            else if (pokemon.Health <= 10)
+                health = $"[red]{health}[/]";
+            else
+                health = $"[yellow]{health}[/]";
+
 
             return $"{name} (Health: {health}, Experience: {experience})".WithValue(pokemon.Id);
         });
 
-        AnsiConsole.WriteLine("Pokémon Pocket");
+        AnsiConsole.Write(title);
+        AnsiConsole.Write(subtitle);
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLineInterpolated(
-            $"You are about to evolve from [yellow]{master.Name}[/] to [yellow]{master.EvolveTo}[/]!");
+
+        AnsiConsole.MarkupLineInterpolated($"You are about to evolve from [yellow]{master.Name}[/] to [yellow]{master.EvolveTo}[/]!");
         AnsiConsole.WriteLine();
 
         var prompt = new MultiSelectionPrompt<Selection>()
             .AddChoices(choices)
-            .InstructionsText(
-                $"Please select exactly or multiples of {master.NoToEvolve} pokemon(s) from your pocket.");
+            .InstructionsText($"Please select exactly or multiples of {master.NoToEvolve} pokemon(s) from your pocket.");
 
         while (true)
         {
-            var ids = AnsiConsole.Prompt(prompt).ToValues<string>();
+            var pokemons = AnsiConsole.Prompt(prompt).ToValues<string>();
 
-            if (ids.Count < master.NoToEvolve || ids.Count % master.NoToEvolve != 0)
+            if (pokemons.Count < master.NoToEvolve || pokemons.Count % master.NoToEvolve != 0)
                 continue;
 
-            sacrifices = ids.Select(id => candidates.First(pokemon => pokemon.Id == id)).ToList();
-            output = ids.Count / master.NoToEvolve;
+            sacrifices = pokemons.Select(id => candidates.First(pokemon => pokemon.Id == id)).ToList();
+            output = pokemons.Count / master.NoToEvolve;
             break;
         }
-
+        
         AnsiConsole.Status().Start("Evolving Pokemon...", context =>
         {
             Thread.Sleep(2000);
@@ -564,12 +602,9 @@ public static class EnhancedMenu
             Thread.Sleep(2000);
         });
 
-        foreach (var sacrifice in sacrifices)
-        {
-            Program.Service.RemovePet(sacrifice);
-        }
-
-        var pet = evolution.SpawnPet();
-        Program.Service.AddPet(pet);
+        Program.Service.RemovePokemons(sacrifices);
+        
+        var pokemon = evolution.SpawnPokemon();
+        Program.Service.AddPokemon(pokemon);
     }
 }
