@@ -19,7 +19,7 @@ public class PokemonMaster
     public bool CanEvolve(Pokemon[] pokemons)
     {
         var number = pokemons.Count(pokemon => pokemon.Name == Name);
-        return number > 0;
+        return number >= NoToEvolve;
     }
 
     public int GetEvolvableAmount(Pokemon[] pokemons)

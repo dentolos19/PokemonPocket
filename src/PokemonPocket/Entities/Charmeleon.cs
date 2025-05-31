@@ -13,6 +13,6 @@ public class Charmeleon : Pokemon
     public override int DamageMultiplier => 3;
 
     // Skill
-    public override string SkillName => "Thunderbolt";
+    public override string SkillName => "Flame Burst";
     public override int SkillDamage => 30;
 }

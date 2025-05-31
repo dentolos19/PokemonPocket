@@ -17,13 +17,21 @@ public class ProgramService
     public ProgramService()
     {
         _context = new ProgramDatabase();
-
-        // Initialize Pokemon Masters
         _masters = new List<PokemonMaster>
         {
             new(nameof(Pikachu), 2, nameof(Raichu)),
             new(nameof(Eevee), 3, nameof(Flareon)),
-            new(nameof(Charmander), 1, nameof(Charmeleon))
+            new(nameof(Charmander), 1, nameof(Charmeleon)),
+            new(nameof(Eevee), 3, nameof(Vaporeon)),
+            new(nameof(Eevee), 3, nameof(Jolteon)),
+            new(nameof(Charmeleon), 2, nameof(Charizard)),
+            new(nameof(Squirtle), 1, nameof(Wartortle)),
+            new(nameof(Wartortle), 2, nameof(Blastoise)),
+            new(nameof(Bulbasaur), 1, nameof(Ivysaur)),
+            new(nameof(Ivysaur), 2, nameof(Venusaur)),
+            new(nameof(Geodude), 2, nameof(Graveler)),
+            new(nameof(Graveler), 3, nameof(Golem)),
+            new(nameof(Magikarp), 5, nameof(Gyarados))
         };
 
         // Load Available Pokemons
@@ -91,7 +99,7 @@ public class ProgramService
 
     public PokemonMaster[] GetAllMasters()
     {
-        return _masters.ToArray();
+        return _masters.OrderBy(master => master.Name).ToArray();
     }
 
     public PokemonMaster? GetMaster(string name)
