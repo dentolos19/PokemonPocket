@@ -204,6 +204,8 @@ public static class EnhancedMenu
         var choices = pokemons.Select(pokemon => pokemon.Name.WithAction(() => AddPokemon_SetDetails(pokemon.Name)));
 
         var prompt = new SelectionPrompt<Selection>()
+            .PageSize(100)
+            .EnableSearch()
             .AddChoiceGroup(
                 "Available Pokemons".AsLabel(),
                 choices.ToArray()
@@ -223,8 +225,12 @@ public static class EnhancedMenu
         AnsiConsole.WriteLine();
 
         var namePrompt = new TextPrompt<string>("Enter Pokemon's Name (optional): ").AllowEmpty();
-        var healthPrompt = new TextPrompt<int>("Enter Pokemon's Health: ");
-        var experiencePrompt = new TextPrompt<int>("Enter Pokemon's Experience: ");
+        var healthPrompt = new TextPrompt<int>("Enter Pokemon's Health: ")
+            .Validate(value =>
+                value >= 0 ? ValidationResult.Success() : ValidationResult.Error("Value must be non-negative."));
+        var experiencePrompt = new TextPrompt<int>("Enter Pokemon's Experience: ")
+            .Validate(value =>
+                value >= 0 ? ValidationResult.Success() : ValidationResult.Error("Value must be non-negative."));
 
         var name = AnsiConsole.Prompt(namePrompt);
         var health = AnsiConsole.Prompt(healthPrompt);
@@ -383,70 +389,72 @@ public static class EnhancedMenu
     {
         var pets = Program.Service.GetAllPets();
         var petGroups = pets.ToLookup(pet => pet.Name, pet => pet);
-        var evolvablePokemons = new List<string>();
+
+        var masters = Program.Service.GetAllMasters();
+        var eligibleMasters = new List<PokemonMaster>();
 
         var table = new Table();
 
-        table.AddColumn("Name");
+        table.AddColumn("From");
+        table.AddColumn("To");
         table.AddColumn("Amount");
-        table.AddColumn("Evolution");
         table.AddColumn("Evolvable?");
 
-        foreach (var group in petGroups)
+        foreach (var master in masters)
         {
-            var pokemon = Program.Service.GetPokemon(group.Key);
-            if (pokemon is null)
-                continue;
+            var from = master.Name;
+            var to = master.EvolveTo;
 
-            var amount = group.Count().ToString();
-            var evolution = "N/A";
+            var fromNumber = petGroups.Contains(from) ? petGroups[from].Count().ToString() : "0";
+            var requiredAmount = master.NoToEvolve.ToString();
+            var amount = $"{fromNumber}/{requiredAmount}";
+
             var evolvable = "[red]No[/]";
 
-            var master = Program.Service.GetMaster(group.Key);
-
-            if (master is not null)
+            if (master.CanEvolve(pets))
             {
-                amount = $"{group.Count()}/{master.NoToEvolve}";
-                evolution = master.EvolveTo;
-
-                if (master.CanEvolve(pets))
-                {
-                    evolvable = "[green]Yes[/]";
-                    evolvablePokemons.Add(master.Name);
-                }
+                evolvable = "[green]Yes[/]";
+                eligibleMasters.Add(master);
             }
 
-            table.AddRow(pokemon.Name, amount, evolution, evolvable);
+            table.AddRow(from, to, amount, evolvable);
         }
 
         AnsiConsole.Write(table);
         AnsiConsole.WriteLine();
 
-        // var evolvableGroups = petGroups
-        //     .Where(group => evolvablePokemons.Contains(group.Key));
+        if (eligibleMasters.Count > 0)
+        {
+            var prompt = new SelectionPrompt<Selection>()
+                .AddChoiceGroup(
+                    "Evolvable Masters".AsLabel(),
+                    eligibleMasters.Select(master =>
+                        $"{master.Name} -> {master.EvolveTo}".WithAction(() => EvolvePokemon_SelectSacrifices(master))
+                    ))
+                .AddChoices(
+                    "Back To Menu".WithEmptyAction()
+                );
 
-        var prompt = new SelectionPrompt<Selection>()
-            .AddChoiceGroup(
-                "Evolvable Pokemons".AsLabel(),
-                evolvablePokemons.Select(name => name.WithAction(() => EvolvePokemon_SelectSacrifices(name))
-                ))
-            .AddChoices(
-                "Back To Menu".WithEmptyAction()
-            );
+            var result = AnsiConsole.Prompt(prompt).ToAction();
 
-        var result = AnsiConsole.Prompt(prompt).ToAction();
-        AnsiConsole.Clear();
-        result.Invoke();
+            AnsiConsole.Clear();
+            result.Invoke();
+        }
+        else
+        {
+            AnsiConsole.MarkupLine("[gray]No evolvable pokemons found.[/]");
+            Console.ReadKey(true);
+        }
     }
 
-    public static void EvolvePokemon_SelectSacrifices(string name)
+    public static void EvolvePokemon_SelectSacrifices(PokemonMaster master)
     {
-        var master = Program.Service.GetMaster(name);
-        var pokemons = Program.Service.GetPokemonPets(name);
+        var candidates = Program.Service.GetPokemonPets(master.Name);
         var evolution = Program.Service.GetPokemon(master.EvolveTo);
         var sacrifices = new List<Pokemon>();
+        var output = 0;
 
-        var choices = pokemons.Select(pokemon =>
+        var choices = candidates.Select(pokemon =>
         {
             var name = pokemon.PetName ?? pokemon.Name;
             var health = pokemon.Health;
@@ -455,20 +463,24 @@ public static class EnhancedMenu
             return $"{name} (Health: {health}, Experience: {experience})".WithValue(pokemon.Id);
         });
 
+        AnsiConsole.WriteLine("Pokémon Pocket");
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLineInterpolated($"You are about to evolve from [yellow]{master.Name}[/] to [yellow]{master.EvolveTo}[/]!");
+        AnsiConsole.WriteLine();
+
         var prompt = new MultiSelectionPrompt<Selection>()
-            .Title("Pokemon Evolution")
             .AddChoices(choices)
-            .InstructionsText($"Please select exactly {master.NoToEvolve} pokemon(s) from your pocket.");
+            .InstructionsText($"Please select exactly or multiples of {master.NoToEvolve} pokemon(s) from your pocket.");
 
         while (true)
         {
             var ids = AnsiConsole.Prompt(prompt).ToValues<string>();
 
-            // Continue to prompt if the number of selections is not equal to the required amount
-            if (ids.Count != master.NoToEvolve)
+            if (ids.Count < master.NoToEvolve || ids.Count % master.NoToEvolve != 0)
                 continue;
 
-            sacrifices = ids.Select(id => pokemons.First(pokemon => pokemon.Id == id)).ToList();
+            sacrifices = ids.Select(id => candidates.First(pokemon => pokemon.Id == id)).ToList();
+            output = ids.Count / master.NoToEvolve;
             break;
         }
 
@@ -476,7 +488,7 @@ public static class EnhancedMenu
         {
             Thread.Sleep(2000);
 
-            context.Status($"Evolving {name} with sacrifices...");
+            context.Status($"Sacrificing {sacrifices.Count} {master.Name} to evolve to {output} {master.EvolveTo}...");
             Thread.Sleep(5000);
 
             context.Status("Pokemon evolved successfully!");
