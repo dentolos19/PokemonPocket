@@ -197,22 +197,25 @@ public static class BasicMenu
     private static void EvolveAll()
     {
         var masters = Program.Service.GetAllMasters();
-
         foreach (var master in masters)
         {
+            // Refresh pets list for each master to get current state
             var pets = Program.Service.GetAllPets();
 
             if (!master.CanEvolve(pets))
                 continue;
 
-            for (var index = 0; index < master.NoToEvolve; index++)
-            {
-                var pet = pets.FirstOrDefault(pokemon => pokemon.Name == master.Name);
-                if (pet is null)
-                    continue;
+            // Get all pets of the same species that need to be evolved
+            var petsToEvolve = pets
+                .Where(pokemon => pokemon.Name == master.Name)
+                .Take(master.NoToEvolve)
+                .ToList();
 
-                Program.Service.RemovePet(pet);
-            }
+            if (petsToEvolve.Count < master.NoToEvolve)
+                continue;
+
+            // Remove all pets in a single batch operation
+            Program.Service.RemovePets(petsToEvolve);
 
             var evolvedPokemon = Program.Service.GetPokemon(master.EvolveTo);
             var evolvedPet = evolvedPokemon.SpawnPet();

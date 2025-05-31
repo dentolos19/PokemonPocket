@@ -70,8 +70,58 @@ public class ProgramService
 
     public void RemovePet(Pokemon pokemon)
     {
-        _context.Pets.Remove(pokemon);
+        // Ensure the entity is being tracked by the context
+        var trackedPet = _context.Pets.Local.FirstOrDefault(localPokemon => localPokemon.Id == pokemon.Id);
+
+        if (trackedPet != null)
+        {
+            _context.Pets.Remove(trackedPet);
+        }
+        else
+        {
+            // If not tracked, attach it first, then remove
+            var removablePet = _context.Pets.Find(pokemon.Id);
+            if (removablePet != null)
+            {
+                _context.Pets.Remove(removablePet);
+            }
+        }
+
         SaveChanges();
+    }
+
+    public void RemovePets(IEnumerable<Pokemon> pokemons)
+    {
+        using var transaction = _context.Database.BeginTransaction();
+
+        try
+        {
+            foreach (var pokemon in pokemons.ToList())
+            {
+                var trackedPet = _context.Pets.Local.FirstOrDefault(localPokemon => localPokemon.Id == pokemon.Id);
+                if (trackedPet != null)
+                {
+                    _context.Pets.Remove(trackedPet);
+                }
+                else
+                {
+                    // If not tracked, attach it first, then remove
+                    var removableEntity = _context.Pets.Find(pokemon.Id);
+                    if (removableEntity != null)
+                    {
+                        _context.Pets.Remove(removableEntity);
+                    }
+                }
+            }
+
+            SaveChanges();
+            transaction.Commit();
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
     }
 
     public bool CheckPokemonExists(string name)
