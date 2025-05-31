@@ -1,4 +1,4 @@
-﻿// Catolos Alvaro Dennise Jay San Juan
+﻿// Dennise
 // 231292A
 
 using PokemonPocket.Helpers;
