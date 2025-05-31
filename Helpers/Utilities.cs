@@ -1,3 +1,6 @@
+// Dennise
+// 231292A
+
 using PokemonPocket.Models;
 
 namespace PokemonPocket.Helpers;
