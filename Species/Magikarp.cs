@@ -3,7 +3,7 @@
 
 using PokemonPocket.Models;
 
-namespace PokemonPocket.Entities;
+namespace PokemonPocket.Species;
 
 public class Magikarp : Pokemon
 {

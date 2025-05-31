@@ -3,16 +3,16 @@
 
 using PokemonPocket.Models;
 
-namespace PokemonPocket.Entities;
+namespace PokemonPocket.Species;
 
-public class Charmeleon : Pokemon
+public class Pikachu : Pokemon
 {
     // Properties
-    public override string Name => nameof(Charmeleon);
+    public override string Name => nameof(Pikachu);
     public override int MaxHealth => 100;
     public override int DamageMultiplier => 3;
 
     // Skill
-    public override string SkillName => "Flame Burst";
+    public override string SkillName => "Thunderbolt";
     public override int SkillDamage => 30;
 }

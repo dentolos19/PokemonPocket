@@ -3,8 +3,8 @@
 
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
-using PokemonPocket.Entities;
 using PokemonPocket.Models;
+using PokemonPocket.Species;
 
 namespace PokemonPocket;
 
