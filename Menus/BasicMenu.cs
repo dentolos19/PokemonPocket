@@ -145,7 +145,7 @@ public static class BasicMenu
             foreach (var pet in pokemons)
             {
                 Console.WriteLine($"Name: {pet.Name}");
-                Console.WriteLine($"Health: {pet.MaxHealth}");
+                Console.WriteLine($"Health: {pet.Health}");
                 Console.WriteLine($"Experience: {pet.Experience}");
                 Console.WriteLine($"Skill: {pet.SkillName}");
                 Console.WriteLine("-----------------------");

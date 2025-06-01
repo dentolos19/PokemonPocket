@@ -1,4 +1,4 @@
-﻿// Dennise
+// Dennise
 // 231292A
 
 using PokemonPocket.Helpers;
@@ -323,6 +323,8 @@ public static class EnhancedMenu
         var confirmation = AnsiConsole.Confirm("Do you want to proceed?");
         if (!confirmation)
             return;
+
+        AnsiConsole.WriteLine();
 
         var namePrompt = new TextPrompt<string>("Enter Pokemon's Name (optional): ").AllowEmpty();
         var healthPrompt = new TextPrompt<int>("Enter Pokemon's Health: ")
@@ -698,8 +700,11 @@ public static class EnhancedMenu
 
         Program.Service.RemovePokemons(sacrifices);
 
-        var pokemon = evolution.SpawnPokemon();
-        Program.Service.AddPokemon(pokemon);
+        for (var index = 0; index < output; index++)
+        {
+            var pokemon = evolution.SpawnPokemon();
+            Program.Service.AddPokemon(pokemon);
+        }
     }
 
     private static void EvolutionChains()
