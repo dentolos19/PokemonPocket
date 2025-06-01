@@ -21,10 +21,4 @@ public class PokemonMaster
         var number = pokemons.Count(pokemon => pokemon.Name == Name);
         return number >= NoToEvolve;
     }
-
-    public int GetEvolvableAmount(Pokemon[] pokemons)
-    {
-        var number = pokemons.Count(pokemon => pokemon.Name == Name);
-        return number >= NoToEvolve ? number / NoToEvolve : 0;
-    }
 }

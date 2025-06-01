@@ -66,7 +66,7 @@ public static class BasicMenu
 
         while (string.IsNullOrEmpty(name))
         {
-            Console.Write("Enter Pokemon's Name: ");
+            Console.Write("Enter Pokemon's Name (or Species): ");
             var nameCandidate = Console.ReadLine();
 
             if (string.IsNullOrEmpty(nameCandidate))
@@ -119,7 +119,7 @@ public static class BasicMenu
 
             if (!int.TryParse(experienceCandidate, out var experienceValue))
             {
-                Console.WriteLine("Experience must be a number. Please try again.");
+                Console.WriteLine("Experience must be a valid and reasonable number. Please try again.");
                 continue;
             }
 
@@ -165,8 +165,15 @@ public static class BasicMenu
         var masters = Program.Service.GetAllMasters();
         var count = 0;
 
+        var processedSpecies = new HashSet<string>();
+
         foreach (var master in masters)
         {
+            if (processedSpecies.Contains(master.Name))
+                continue;
+
+            processedSpecies.Add(master.Name);
+
             if (!master.CanEvolve(pokemons))
                 continue;
 

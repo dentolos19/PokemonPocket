@@ -22,7 +22,7 @@ public static class EnhancedMenu
             .AddChoiceGroup(
                 "My Adventure".AsLabel(),
                 "Catch A Pokémon".WithAction(CatchPokemon_Wilding),
-                "Add A Pokémon".WithAction(AddPokemon_SelectPokemon),
+                "Add A Pokémon".WithAction(AddPokemon_SelectSpecies),
                 "View My Pokémons".WithAction(ViewPokemons_ListPokemons),
                 "Evolve My Pokémons".WithAction(EvolvePokemon_ListEvolvables),
                 "View Evolution Chains".WithAction(EvolutionChains)
@@ -49,14 +49,30 @@ public static class EnhancedMenu
         AnsiConsole.WriteLine();
 
         var availableSpecies = Program.Service.GetAllSpecies();
-        var randomSpecies = availableSpecies.OrderBy(_ => Guid.NewGuid()).First().SpawnPokemon();
+        var wildPokemon = availableSpecies.OrderBy(_ => Guid.NewGuid()).First().SpawnPokemon();
 
-        AnsiConsole.MarkupLineInterpolated($"A wild [yellow]{randomSpecies.Name}[/] has been spotted!");
+        // Randomly set the health of the wild Pokémon between 60% and 100% of its max health
+        var healthPercentage = Random.Shared.Next(60, 101) / 100.0;
+        wildPokemon.Health = (int)(wildPokemon.MaxHealth * healthPercentage);
+
+        AnsiConsole.MarkupLineInterpolated($"A wild [yellow]{wildPokemon.Name}[/] has been spotted!");
+        AnsiConsole.WriteLine();
+
+        var table = new Table();
+
+        table.AddColumn(new TableColumn("[italic]Property[/]"));
+        table.AddColumn(new TableColumn("[italic]Value[/]"));
+
+        table.AddRow("Health", $"{wildPokemon.Health}/{wildPokemon.MaxHealth}");
+        table.AddRow("Skill Name", wildPokemon.SkillName);
+        table.AddRow("Skill Damage", wildPokemon.SkillDamage.ToString());
+
+        AnsiConsole.Write(table);
         AnsiConsole.WriteLine();
 
         var prompt = new SelectionPrompt<Selection>()
             .AddChoices(
-                "Target Pokemon".WithAction(() => CatchPokemon_Draft(randomSpecies)),
+                "Target Pokemon".WithAction(() => CatchPokemon_Draft(wildPokemon)),
                 "Move On".WithAction(CatchPokemon_Wilding),
                 "Back".WithEmptyAction()
             );
@@ -68,38 +84,84 @@ public static class EnhancedMenu
     private static void CatchPokemon_Draft(Pokemon wild)
     {
         var pokemons = Program.Service.GetAllPokemons();
-        var groups = pokemons.ToLookup(pet => pet.Name, pet => pet);
 
-        var prompt = new SelectionPrompt<Selection>()
-            .PageSize(30)
-            .EnableSearch();
-
-        foreach (var group in groups)
+        if (pokemons.Length > 0)
         {
-            var groupPokemons = group.Where(pet => pet.Health > 0).ToArray();
-            if (groupPokemons.Length <= 0)
-                continue;
+            var groups = pokemons.ToLookup(pokemon => pokemon.Name, pokemon => pokemon);
 
-            var choices = groupPokemons.Select(draft =>
+            var prompt = new SelectionPrompt<Selection>()
+                .PageSize(30)
+                .EnableSearch()
+                .SearchPlaceholderText("[dim]Type to search for a Pokémon.[/]");
+
+            foreach (var group in groups)
             {
-                var name = draft.GetName();
-                var health = draft.Health;
-                var experience = draft.Experience;
+                var groupPokemons = group.Where(pokemon => pokemon.Health > 0).ToArray();
+                if (groupPokemons.Length <= 0)
+                    continue;
 
-                return $"{name} (Health: {health}, Experience: {experience})".WithAction(() => CatchPokemon_Catch(wild, draft));
-            });
+                var choices = groupPokemons.Select(draft =>
+                {
+                    var name = draft.GetName();
+                    var health = $"{draft.Health}/{draft.MaxHealth}";
+                    var experience = draft.Experience;
 
-            prompt.AddChoiceGroup(group.Key.AsLabel(), choices);
+                    if (draft.Health >= draft.MaxHealth - 10)
+                        health = $"[green]{health}[/]";
+                    else if (draft.Health <= 10)
+                        health = $"[red]{health}[/]";
+                    else
+                        health = $"[yellow]{health}[/]";
+
+                    return $"{name} (Health: {health}, Experience: {experience})".WithAction(() => CatchPokemon_Catch(wild, draft));
+                });
+
+                prompt.AddChoiceGroup(group.Key.AsLabel(), choices);
+            }
+
+            prompt.AddChoices("Back".WithEmptyAction());
+
+            var result = AnsiConsole.Prompt(prompt).ToAction();
+            result.Invoke();
         }
-
-        prompt.AddChoices("Back".WithEmptyAction());
-
-        var result = AnsiConsole.Prompt(prompt).ToAction();
-        result.Invoke();
+        else
+        {
+            AnsiConsole.MarkupLine("[dim]No pokemons found in your pocket to catch with.[/]");
+            Console.ReadKey();
+        }
     }
 
     private static void CatchPokemon_Catch(Pokemon wild, Pokemon draft)
     {
+        AnsiConsole.Clear();
+
+        var battleTitle = new FigletText("Pokémon Pocket").Color(Color.Yellow).Centered();
+        var battleSubtitle = new Rule("Battle Confirmation!").RuleStyle(new Style(Color.Orange1));
+
+        AnsiConsole.Write(battleTitle);
+        AnsiConsole.Write(battleSubtitle);
+        AnsiConsole.WriteLine();
+
+        var comparisonTable = new Table();
+
+        comparisonTable.AddColumn(new TableColumn("[bold]Property[/]"));
+        comparisonTable.AddColumn(new TableColumn($"[green]{draft.GetName()}[/] (Your Pokémon)").Centered());
+        comparisonTable.AddColumn(new TableColumn($"[red]{wild.Name}[/] (Wild Pokémon)").Centered());
+
+        comparisonTable.AddRow("Health", $"{draft.Health}/{draft.MaxHealth}", $"{wild.Health}/{wild.MaxHealth}");
+        comparisonTable.AddRow("Experience", draft.Experience.ToString(), "Unknown");
+        comparisonTable.AddRow("Skill Name", draft.SkillName, wild.SkillName);
+        comparisonTable.AddRow("Skill Damage", draft.SkillDamage.ToString(), wild.SkillDamage.ToString());
+
+        AnsiConsole.Write(comparisonTable);
+        AnsiConsole.WriteLine();
+
+        var confirmation = AnsiConsole.Confirm($"Start battle between [green]{draft.GetName()}[/] and [red]{wild.Name}[/]?");
+        if (!confirmation)
+            return;
+
+        AnsiConsole.Clear();
+
         var title = new FigletText("Pokémon Pocket").Color(Color.Yellow).Centered();
         var subtitle = new Rule("Battle Mode!").RuleStyle(new Style(Color.Red));
 
@@ -219,7 +281,7 @@ public static class EnhancedMenu
         }
     }
 
-    private static void AddPokemon_SelectPokemon()
+    private static void AddPokemon_SelectSpecies()
     {
         var pokemons = Program.Service.GetAllSpecies();
         var choices = pokemons.Select(pokemon => pokemon.Name.WithAction(() => AddPokemon_SetDetails(pokemon.Name)));
@@ -227,6 +289,7 @@ public static class EnhancedMenu
         var prompt = new SelectionPrompt<Selection>()
             .PageSize(100)
             .EnableSearch()
+            .SearchPlaceholderText("[dim]Type to search for a Species.[/]")
             .AddChoiceGroup(
                 "Available Species".AsLabel(),
                 choices.ToArray()
@@ -244,6 +307,22 @@ public static class EnhancedMenu
 
         AnsiConsole.MarkupLineInterpolated($"You are about to add [bold yellow]{species.Name}[/]!");
         AnsiConsole.WriteLine();
+
+        var table = new Table();
+
+        table.AddColumn(new TableColumn("[italic]Property[/]"));
+        table.AddColumn(new TableColumn("[italic]Value[/]"));
+
+        table.AddRow("Max Health", species.MaxHealth.ToString());
+        table.AddRow("Skill Name", species.SkillName);
+        table.AddRow("Skill Damage", species.SkillDamage.ToString());
+
+        AnsiConsole.Write(table);
+        AnsiConsole.WriteLine();
+
+        var confirmation = AnsiConsole.Confirm("Do you want to proceed?");
+        if (!confirmation)
+            return;
 
         var namePrompt = new TextPrompt<string>("Enter Pokemon's Name (optional): ").AllowEmpty();
         var healthPrompt = new TextPrompt<int>("Enter Pokemon's Health: ")
@@ -277,105 +356,115 @@ public static class EnhancedMenu
         var title = new FigletText("Pokémon Pocket").Color(Color.Yellow).Centered();
         var table = new Table();
 
-        table.AddColumn("Species");
-        table.AddColumn("Name");
-        table.AddColumn("Health");
-        table.AddColumn("Experience");
-        table.AddColumn("Skill");
+        table.AddColumn(new TableColumn("[italic]Species[/]").Centered());
+        table.AddColumn(new TableColumn("[italic]Name[/]").Centered());
+        table.AddColumn(new TableColumn("[italic]Health[/]").Centered());
+        table.AddColumn(new TableColumn("[italic]Experience[/]").Centered());
+        table.AddColumn(new TableColumn("[italic]Skill[/]").Centered());
         table.Expand();
 
         var pokemons = Program.Service.GetAllPokemons();
 
-        foreach (var pokemon in pokemons)
+        if (pokemons.Length > 0)
         {
-            var speciesName = $"[cyan]{pokemon.Name}[/]";
-            var pokemonName = pokemon.PetName ?? "[dim]No nickname specified.[/]";
-            var health = $"{pokemon.Health}/{pokemon.MaxHealth}";
-            var experience = pokemon.Experience;
-            var skill = pokemon.SkillName;
+            foreach (var pokemon in pokemons)
+            {
+                var speciesName = $"[cyan]{pokemon.Name}[/]";
+                var pokemonName = pokemon.PetName ?? "[dim]No nickname specified.[/]";
+                var health = $"{pokemon.Health}/{pokemon.MaxHealth}";
+                var experience = pokemon.Experience;
+                var skill = pokemon.SkillName;
 
-            if (pokemon.Health >= pokemon.MaxHealth - 10)
-                health = $"[green]{health}[/]";
-            else if (pokemon.Health <= 10)
-                health = $"[red]{health}[/]";
-            else
-                health = $"[yellow]{health}[/]";
+                if (pokemon.Health >= pokemon.MaxHealth - 10)
+                    health = $"[green]{health}[/]";
+                else if (pokemon.Health <= 10)
+                    health = $"[red]{health}[/]";
+                else
+                    health = $"[yellow]{health}[/]";
 
-            table.AddRow(speciesName, pokemonName, health, experience.ToString(), skill);
+                table.AddRow(speciesName, pokemonName, health, experience.ToString(), skill);
+            }
+
+            AnsiConsole.Write(table);
+            AnsiConsole.WriteLine();
+
+            var prompt = new SelectionPrompt<Selection>()
+                .AddChoiceGroup(
+                    "Actions".AsLabel(),
+                    "Rename".WithAction(() =>
+                    {
+                        var subtitle = new Rule("Vet Clinic!").RuleStyle(new Style(Color.Green));
+
+                        AnsiConsole.Clear();
+                        AnsiConsole.Write(title);
+                        AnsiConsole.Write(subtitle);
+                        AnsiConsole.WriteLine();
+
+                        ViewPokemons_SelectPokemon(ViewPokemons_RenamePokemon);
+                    }),
+                    "Heal".WithAction(() =>
+                    {
+                        var subtitle = new Rule("Healing Station!").RuleStyle(new Style(Color.Green));
+
+                        AnsiConsole.Clear();
+                        AnsiConsole.Write(title);
+                        AnsiConsole.Write(subtitle);
+                        AnsiConsole.WriteLine();
+
+                        ViewPokemons_SelectPokemon(ViewPokemons_HealPokemon);
+                    }),
+                    "Release".WithAction(() =>
+                    {
+                        var subtitle = new Rule("Release Center!").RuleStyle(new Style(Color.Green));
+
+                        AnsiConsole.Clear();
+                        AnsiConsole.Write(title);
+                        AnsiConsole.Write(subtitle);
+                        AnsiConsole.WriteLine();
+
+                        ViewPokemons_SelectPokemon(ViewPokemons_ReleasePokemon);
+                    })
+                ).AddChoices(
+                    "Back".WithEmptyAction()
+                );
+
+            var result = AnsiConsole.Prompt(prompt).ToAction();
+            result.Invoke();
+        }
+        else
+        {
+            AnsiConsole.MarkupLine("[dim]No pokemons found in your pocket.[/]");
+            Console.ReadKey();
         }
 
-        AnsiConsole.Write(table);
-        AnsiConsole.WriteLine();
-
-        var prompt = new SelectionPrompt<Selection>()
-            .AddChoiceGroup(
-                "Actions".AsLabel(),
-                "Rename".WithAction(() =>
-                {
-                    var subtitle = new Rule("Vet Clinic!").RuleStyle(new Style(Color.Green));
-
-                    AnsiConsole.Clear();
-                    AnsiConsole.Write(title);
-                    AnsiConsole.Write(subtitle);
-                    AnsiConsole.WriteLine();
-
-                    ViewPokemons_SelectPokemon(ViewPokemons_RenamePokemon);
-                }),
-                "Heal".WithAction(() =>
-                {
-                    var subtitle = new Rule("Healing Station!").RuleStyle(new Style(Color.Green));
-
-                    AnsiConsole.Clear();
-                    AnsiConsole.Write(title);
-                    AnsiConsole.Write(subtitle);
-                    AnsiConsole.WriteLine();
-
-                    ViewPokemons_SelectPokemon(ViewPokemons_HealPokemon);
-                }),
-                "Release".WithAction(() =>
-                {
-                    var subtitle = new Rule("Release Center!").RuleStyle(new Style(Color.Green));
-
-                    AnsiConsole.Clear();
-                    AnsiConsole.Write(title);
-                    AnsiConsole.Write(subtitle);
-                    AnsiConsole.WriteLine();
-
-                    ViewPokemons_SelectPokemon(ViewPokemons_ReleasePokemon);
-                })
-            ).AddChoices(
-                "Back".WithEmptyAction()
-            );
-
-        var result = AnsiConsole.Prompt(prompt).ToAction();
-        result.Invoke();
     }
 
     private static void ViewPokemons_SelectPokemon(Action<Pokemon> callback)
     {
         var pokemons = Program.Service.GetAllPokemons();
-        var groups = pokemons.ToLookup(pet => pet.Name, pet => pet);
+        var groups = pokemons.ToLookup(pokemon => pokemon.Name, pokemon => pokemon);
 
         var prompt = new SelectionPrompt<Selection>()
             .PageSize(30)
-            .EnableSearch();
+            .EnableSearch()
+            .SearchPlaceholderText("[dim]Type to search for a Pokémon.[/]");
 
         foreach (var group in groups)
         {
-            var choices = group.Select(pet =>
+            var choices = group.Select(pokemon =>
             {
-                var name = pet.GetName();
-                var health = $"{pet.Health}/{pet.MaxHealth}";
-                var experience = pet.Experience;
+                var name = pokemon.GetName();
+                var health = $"{pokemon.Health}/{pokemon.MaxHealth}";
+                var experience = pokemon.Experience;
 
-                if (pet.Health >= pet.MaxHealth - 10)
+                if (pokemon.Health >= pokemon.MaxHealth - 10)
                     health = $"[green]{health}[/]";
-                else if (pet.Health <= 10)
+                else if (pokemon.Health <= 10)
                     health = $"[red]{health}[/]";
                 else
                     health = $"[yellow]{health}[/]";
 
-                return $"{name} (Health: {health}, Experience: {experience})".WithAction(() => callback(pet));
+                return $"{name} (Health: {health}, Experience: {experience})".WithAction(() => callback(pokemon));
             });
 
             prompt.AddChoiceGroup(group.Key.AsLabel(), choices);
@@ -423,14 +512,14 @@ public static class EnhancedMenu
         if (healthRequired <= 0)
         {
             AnsiConsole.MarkupLineInterpolated($"[yellow]{name}[/] is already at full health!");
-            Console.ReadKey(true);
+            Console.ReadKey();
             return;
         }
 
         if (healthIncreasable <= 0)
         {
             AnsiConsole.MarkupLineInterpolated($"[yellow]{name}[/] does not have enough experience to heal!");
-            Console.ReadKey(true);
+            Console.ReadKey();
             return;
         }
 
@@ -492,10 +581,10 @@ public static class EnhancedMenu
 
         var table = new Table();
 
-        table.AddColumn("From Species");
-        table.AddColumn("To Species");
-        table.AddColumn("Required Amount");
-        table.AddColumn("Evolvable?");
+        table.AddColumn(new TableColumn("[italic]From Species[/]").Centered());
+        table.AddColumn(new TableColumn("[italic]To Species[/]").Centered());
+        table.AddColumn(new TableColumn("[italic]Required Amount[/]").Centered());
+        table.AddColumn(new TableColumn("[italic]Evolvable?[/]").Centered());
         table.Expand();
 
         foreach (var master in masters)
@@ -542,7 +631,7 @@ public static class EnhancedMenu
         else
         {
             AnsiConsole.MarkupLine("[dim]No evolvable pokemons found.[/]");
-            Console.ReadKey(true);
+            Console.ReadKey();
         }
     }
 
@@ -664,8 +753,8 @@ public static class EnhancedMenu
 
         var table = new Table();
 
-        table.AddColumn("Evolution Chain");
-        table.AddColumn("Requirements");
+        table.AddColumn("[italic]Evolution Chain[/]");
+        table.AddColumn("[italic]Requirements[/]");
         table.Expand();
 
         foreach (var (chainStart, chainMasters) in chains)
@@ -693,6 +782,6 @@ public static class EnhancedMenu
         AnsiConsole.WriteLine();
 
         AnsiConsole.MarkupLine("[dim]Press any key to return to menu...[/]");
-        Console.ReadKey(true);
+        Console.ReadKey();
     }
 }
