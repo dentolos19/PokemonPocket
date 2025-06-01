@@ -211,24 +211,23 @@ public static class BasicMenu
                 continue;
 
             // Get all pets of the same species that need to be evolved
-            var petsToEvolve = pets
+            var sacrifices = pets
                 .Where(pokemon => pokemon.Name == master.Name)
                 .Take(master.NoToEvolve)
                 .ToList();
 
-            if (petsToEvolve.Count < master.NoToEvolve)
+            if (sacrifices.Count < master.NoToEvolve)
                 continue;
 
             // Remove all pets in a single batch operation
-            Program.Service.RemovePokemons(petsToEvolve);
+            Program.Service.RemovePokemons(sacrifices);
 
-            var evolvedSpecies = Program.Service.GetSpecies(master.EvolveTo);
-            var evolvedPokemon = evolvedSpecies.SpawnPokemon();
-            Program.Service.AddPokemon(evolvedPokemon);
+            var species = Program.Service.GetSpecies(master.EvolveTo);
+            var pokemon = species.SpawnPokemon();
+            Program.Service.AddPokemon(pokemon);
         }
 
         Console.WriteLine("Evolved all eligible pokemons.");
-
         Console.ReadKey();
     }
 }

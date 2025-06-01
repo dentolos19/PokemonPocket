@@ -49,15 +49,6 @@ public class Pokemon
         return SkillDamage;
     }
 
-    public void EvolveTo(Pokemon pokemon)
-    {
-        Name = pokemon.Name;
-        MaxHealth = pokemon.MaxHealth;
-        SkillName = pokemon.SkillName;
-        SkillDamage = pokemon.SkillDamage;
-        DamageMultiplier = pokemon.DamageMultiplier;
-    }
-
     public string GetName()
     {
         return string.IsNullOrEmpty(PetName) ? Name : PetName;
@@ -66,7 +57,12 @@ public class Pokemon
     public Pokemon SpawnPokemon(string? name = null, int health = 100, int experience = 0)
     {
         var pet = new Pokemon();
-        pet.EvolveTo(this);
+
+        pet.Name = Name;
+        pet.MaxHealth = MaxHealth;
+        pet.DamageMultiplier = DamageMultiplier;
+        pet.SkillName = SkillName;
+        pet.SkillDamage = SkillDamage;
 
         pet.PetName = name;
         pet.Health = health;
